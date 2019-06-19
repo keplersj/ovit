@@ -1,0 +1,7 @@
+[package]
+name = "tivo_mfs_fuse"
+version = "0.1.0"
+authors = ["Kepler Sticka-Jones <kepler+git@stickajones.org>"]
+edition = "2018"
+
+[dependencies]
