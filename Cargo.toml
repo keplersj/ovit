@@ -5,6 +5,4 @@ authors = ["Kepler Sticka-Jones <kepler@stickajones.org>"]
 edition = "2018"
 
 [dependencies]
-fuse = "0.3"
-env_logger = "0.6.1"
 pbr = "1.0.1"
