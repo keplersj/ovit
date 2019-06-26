@@ -10,7 +10,7 @@ const TIVO_BOOT_MAGIC: u16 = 0x1492;
 const TIVO_BOOT_AMIGC: u16 = 0x9214;
 
 fn bytes_to_short(first_byte: u8, second_byte: u8) -> u16 {
-    ((first_byte as u16) << 8) | second_byte as u16
+    (u16::from(first_byte) << 8) | u16::from(second_byte)
 }
 
 fn create_byte_swapped_image() {
@@ -38,11 +38,11 @@ fn create_byte_swapped_image() {
             .flat_map(|chunk| vec![chunk[1], chunk[0]])
             .collect::<Vec<u8>>();
 
-        swapped_file
+        let bytes_written = swapped_file
             .write(&swapped_buffer)
             .expect("Could not write to new file");
 
-        pb.add(swapped_buffer.len() as u64);
+        pb.add(bytes_written as u64);
     }
 
     pb.finish_print("Swapped file created!");
