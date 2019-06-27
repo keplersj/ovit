@@ -1,7 +1,7 @@
 extern crate clap;
 extern crate pbr;
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg};
 
 use pbr::{ProgressBar, Units};
 
@@ -52,9 +52,9 @@ fn create_byte_swapped_image() {
 }
 
 
-fn old_main() {
+fn open_tivo_image(path: &str) {
     println!("Reading Tivo Harddrive Disk Image");
-    let mut file = File::open("/Volumes/External/tivo_hdd.iso").expect("Couldn't open image");
+    let mut file = File::open(path).expect("Couldn't open image");
 
     let mut buffer = [0; 2];
     file.read_exact(&mut buffer)
@@ -64,8 +64,8 @@ fn old_main() {
         TIVO_BOOT_MAGIC => println!("Disk Image is in Correct Order!"),
         TIVO_BOOT_AMIGC => {
             println!("Disk Image is Byte Swapped!");
-            println!("Going to create byte swapped image now.");
-            create_byte_swapped_image();
+            // println!("Going to create byte swapped image now.");
+            // create_byte_swapped_image();
         }
         _ => println!("I don't think this is a Tivo disk image"),
     }
@@ -83,5 +83,8 @@ fn main() {
 
     // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
     // required we could have used an 'if let' to conditionally get the value)
-    println!("Using input file: {}", matches.value_of("INPUT").unwrap());
+    let input_path = matches.value_of("INPUT").unwrap();
+    println!("Using input file: {}", input_path);
+
+    open_tivo_image(input_path);
 }
