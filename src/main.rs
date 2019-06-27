@@ -1,4 +1,7 @@
+extern crate clap;
 extern crate pbr;
+
+use clap::{App, Arg, SubCommand};
 
 use pbr::{ProgressBar, Units};
 
@@ -49,7 +52,7 @@ fn create_byte_swapped_image() {
 }
 
 
-fn main() {
+fn old_main() {
     println!("Reading Tivo Harddrive Disk Image");
     let mut file = File::open("/Volumes/External/tivo_hdd.iso").expect("Couldn't open image");
 
@@ -66,4 +69,19 @@ fn main() {
         }
         _ => println!("I don't think this is a Tivo disk image"),
     }
+}
+
+fn main() {
+    let matches = App::new("TiVo MFS Experiment")
+        .version("0.0.0-dev")
+        .author("Kepler Sticka-Jones <kepler@stickajones.org>")
+        .about("An experimental binary to retrieve MPEG streams from a TiVo hard drive (image) and do other TiVo drive related things.")
+        .arg(Arg::with_name("INPUT")
+            .help("The drive image to read from")
+            .required(true))
+        .get_matches();
+
+    // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
+    // required we could have used an 'if let' to conditionally get the value)
+    println!("Using input file: {}", matches.value_of("INPUT").unwrap());
 }

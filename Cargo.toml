@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 pbr = "1.0.1"
+clap = "2.33.0"
