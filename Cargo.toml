@@ -5,5 +5,5 @@ authors = ["Kepler Sticka-Jones <kepler@stickajones.org>"]
 edition = "2018"
 
 [dependencies]
-pbr = "1.0.1"
 clap = "2.33.0"
+positioned-io = "0.2"
