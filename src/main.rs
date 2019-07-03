@@ -34,7 +34,7 @@ impl Partition {
     fn new(bytes: Vec<u8>) -> Result<Partition, &'static str> {
         let signature = String::from_utf8(
             bytes
-                .get(0..2)
+                .get(0..=1)
                 .expect("Could not get signature bytes from partition entry")
                 .to_vec(),
         )
@@ -47,7 +47,7 @@ impl Partition {
 
         let partitions_total = u32::from_be_bytes(
             bytes
-                .get(4..8)
+                .get(4..=7)
                 .expect("Could not get partitions total from partition entry")
                 .try_into()
                 .unwrap(),
@@ -55,7 +55,7 @@ impl Partition {
 
         let starting_sector = u32::from_be_bytes(
             bytes
-                .get(8..12)
+                .get(8..=11)
                 .expect("Could not get starting sector from partition entry")
                 .try_into()
                 .unwrap(),
@@ -63,7 +63,7 @@ impl Partition {
 
         let sector_size = u32::from_be_bytes(
             bytes
-                .get(12..16)
+                .get(12..=15)
                 .expect("Could not get sector size from partition entry")
                 .try_into()
                 .unwrap(),
@@ -71,7 +71,7 @@ impl Partition {
 
         let name = String::from_utf8(
             bytes
-                .get(16..48)
+                .get(16..=47)
                 .expect("Could not get name bytes from partition entry")
                 .to_vec(),
         )
@@ -81,7 +81,7 @@ impl Partition {
 
         let r#type = String::from_utf8(
             bytes
-                .get(48..80)
+                .get(48..=79)
                 .expect("Could not get type bytes from partition entry")
                 .to_vec(),
         )
@@ -91,7 +91,7 @@ impl Partition {
 
         let starting_data_sector = u32::from_be_bytes(
             bytes
-                .get(80..84)
+                .get(80..=83)
                 .expect("Could not get the sector where data begins from partition entry")
                 .try_into()
                 .unwrap(),
@@ -99,7 +99,7 @@ impl Partition {
 
         let data_sectors = u32::from_be_bytes(
             bytes
-                .get(84..88)
+                .get(84..=87)
                 .expect("Could not get sector size of data from partition entry")
                 .try_into()
                 .unwrap(),
@@ -109,7 +109,7 @@ impl Partition {
             "{:#X}",
             u32::from_be_bytes(
                 bytes
-                    .get(88..92)
+                    .get(88..=91)
                     .expect("Could not get status from partition entry")
                     .try_into()
                     .unwrap(),
@@ -175,9 +175,12 @@ fn open_tivo_image(path: &str) -> Result<TivoDrive, &'static str> {
     let partition_map_partition: Vec<u8> = partition_map_buffer
         .chunks_exact(2)
         .map(|chunk| u16::from_be_bytes(chunk[0..2].try_into().unwrap()))
-        .map(|byte| match is_byte_swapped {
-            true => byte,
-            false => byte.swap_bytes(),
+        .map(|byte| {
+            if is_byte_swapped {
+                byte
+            } else {
+                byte.swap_bytes()
+            }
         })
         .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
         .collect();
@@ -189,30 +192,32 @@ fn open_tivo_image(path: &str) -> Result<TivoDrive, &'static str> {
 
     for offset in 2..=partitions.get(0).unwrap().partitions_total {
         let mut raw_partition_buffer = [0; APM_BLOCK_SIZE];
-        file.read_exact_at(512 * offset as u64, &mut raw_partition_buffer)
+        file.read_exact_at(512 * u64::from(offset), &mut raw_partition_buffer)
             .expect("Could not read block containing partition map");
 
         let partition_buffer: Vec<u8> = raw_partition_buffer
             .chunks_exact(2)
             .map(|chunk| u16::from_be_bytes(chunk[0..2].try_into().unwrap()))
-            .map(|byte| match is_byte_swapped {
-                true => byte,
-                false => byte.swap_bytes(),
+            .map(|byte| {
+                if is_byte_swapped {
+                    byte
+                } else {
+                    byte.swap_bytes()
+                }
             })
             .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
             .collect();
 
-        let partition = Partition::new(partition_buffer).expect(&format!(
-            "Could not reconstruct partition at offset {}",
-            512 * offset
-        ));
+        let partition = Partition::new(partition_buffer).unwrap_or_else(|_| {
+            panic!("Could not reconstruct partition at offset {}", 512 * offset)
+        });
 
         partitions.push(partition);
     }
 
-    return Ok(TivoDrive {
+    Ok(TivoDrive {
         partition_map: ApplePartitionMap { partitions },
-    });
+    })
 }
 
 fn main() {
