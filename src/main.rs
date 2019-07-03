@@ -9,6 +9,8 @@ use std::fs::File;
 
 use std::io::prelude::*;
 
+use std::ops::RangeInclusive;
+
 use std::vec::Vec;
 
 use positioned_io::ReadAt;
@@ -30,92 +32,54 @@ struct Partition {
     status: String,
 }
 
+fn get_string_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> String {
+    String::from_utf8(
+        bytes
+            .get(range)
+            .expect("Could not get signature bytes from partition entry")
+            .to_vec(),
+    )
+    .expect("Could not get signature from partition entry")
+    .to_string()
+}
+
+fn get_u32_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> u32 {
+    u32::from_be_bytes(
+        bytes
+            .get(range)
+            .expect("Could not get partitions total from partition entry")
+            .try_into()
+            .unwrap(),
+    )
+}
+
 impl Partition {
     fn new(bytes: Vec<u8>) -> Result<Partition, &'static str> {
-        let signature = String::from_utf8(
-            bytes
-                .get(0..=1)
-                .expect("Could not get signature bytes from partition entry")
-                .to_vec(),
-        )
-        .expect("Could not get signature from partition entry")
-        .to_string();
+        let signature = get_string_from_bytes_range(&bytes, 0..=1);
 
         if signature != "PM" {
             return Err("Invalid signature in sector");
         }
 
-        let partitions_total = u32::from_be_bytes(
-            bytes
-                .get(4..=7)
-                .expect("Could not get partitions total from partition entry")
-                .try_into()
-                .unwrap(),
-        );
+        let partitions_total = get_u32_from_bytes_range(&bytes, 4..=7);
 
-        let starting_sector = u32::from_be_bytes(
-            bytes
-                .get(8..=11)
-                .expect("Could not get starting sector from partition entry")
-                .try_into()
-                .unwrap(),
-        );
+        let starting_sector = get_u32_from_bytes_range(&bytes, 8..=11);
 
-        let sector_size = u32::from_be_bytes(
-            bytes
-                .get(12..=15)
-                .expect("Could not get sector size from partition entry")
-                .try_into()
-                .unwrap(),
-        );
+        let sector_size = get_u32_from_bytes_range(&bytes, 12..=15);
 
-        let name = String::from_utf8(
-            bytes
-                .get(16..=47)
-                .expect("Could not get name bytes from partition entry")
-                .to_vec(),
-        )
-        .expect("Could not get name from partition entry")
-        .trim_matches(char::from(0))
-        .to_string();
+        let name = get_string_from_bytes_range(&bytes, 16..=47)
+            .trim_matches(char::from(0))
+            .to_string();
 
-        let r#type = String::from_utf8(
-            bytes
-                .get(48..=79)
-                .expect("Could not get type bytes from partition entry")
-                .to_vec(),
-        )
-        .expect("Could not get type from partition entry")
-        .trim_matches(char::from(0))
-        .to_string();
+        let r#type = get_string_from_bytes_range(&bytes, 48..=79)
+            .trim_matches(char::from(0))
+            .to_string();
 
-        let starting_data_sector = u32::from_be_bytes(
-            bytes
-                .get(80..=83)
-                .expect("Could not get the sector where data begins from partition entry")
-                .try_into()
-                .unwrap(),
-        );
+        let starting_data_sector = get_u32_from_bytes_range(&bytes, 80..=83);
 
-        let data_sectors = u32::from_be_bytes(
-            bytes
-                .get(84..=87)
-                .expect("Could not get sector size of data from partition entry")
-                .try_into()
-                .unwrap(),
-        );
+        let data_sectors = get_u32_from_bytes_range(&bytes, 84..=87);
 
-        let status = format!(
-            "{:#X}",
-            u32::from_be_bytes(
-                bytes
-                    .get(88..=91)
-                    .expect("Could not get status from partition entry")
-                    .try_into()
-                    .unwrap(),
-            )
-        );
-
+        let status = format!("{:#X}", get_u32_from_bytes_range(&bytes, 88..=91));
 
         Ok(Partition {
             signature,
@@ -142,35 +106,39 @@ struct TivoDrive {
 }
 
 fn open_tivo_image(path: &str) -> Result<TivoDrive, &'static str> {
-    let mut file = File::open(path).expect("Couldn't open image");
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(_) => {
+            return Err("Couldn't open image");
+        }
+    };
 
     let mut buffer = [0; 2];
-    file.read_exact(&mut buffer)
-        .expect("Could not read first two bytes from file");
-
-    let is_byte_swapped: bool;
-
-    match u16::from_be_bytes(buffer[0..2].try_into().unwrap()) {
-        TIVO_BOOT_MAGIC => {
-            // println!("Disk Image is in Correct Order! (Drive is LittleEndian)");
-            is_byte_swapped = false;
+    match file.read_exact(&mut buffer) {
+        Ok(_) => {}
+        Err(_) => {
+            return Err("Could not read first two bytes from file");
         }
-        TIVO_BOOT_AMIGC => {
-            // println!("Disk Image is Byte Swapped! (Drive is BigEndian)");
-            is_byte_swapped = true;
-        }
+    };
+
+    let is_byte_swapped = match u16::from_be_bytes(buffer[0..2].try_into().unwrap()) {
+        TIVO_BOOT_MAGIC => false,
+        TIVO_BOOT_AMIGC => true,
         _ => {
-            // println!("I don't think this is a TiVo disk image");
             return Err("Not a TiVo Drive");
         }
-    }
+    };
 
     // The first block on a TiVo drive contain special TiVo magic,
     //  we're not worried about this for reconstructing the partition map.
     //  The partition entry describing the partition map should be in the second block (offet: 512)
     let mut partition_map_buffer = [0; APM_BLOCK_SIZE];
-    file.read_exact_at(512, &mut partition_map_buffer)
-        .expect("Could not read block containing partition map");
+    match file.read_exact_at(512, &mut partition_map_buffer) {
+        Ok(_) => {}
+        Err(_) => {
+            return Err("Could not read block containing partition map");
+        }
+    }
 
     let partition_map_partition: Vec<u8> = partition_map_buffer
         .chunks_exact(2)
@@ -208,11 +176,14 @@ fn open_tivo_image(path: &str) -> Result<TivoDrive, &'static str> {
             .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
             .collect();
 
-        let partition = Partition::new(partition_buffer).unwrap_or_else(|_| {
-            panic!("Could not reconstruct partition at offset {}", 512 * offset)
-        });
-
-        partitions.push(partition);
+        match Partition::new(partition_buffer) {
+            Ok(partition) => {
+                partitions.push(partition);
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        }
     }
 
     Ok(TivoDrive {
