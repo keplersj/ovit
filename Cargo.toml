@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 clap = "2.33.0"
 positioned-io = "0.2"
+pbr = "1.0.1"

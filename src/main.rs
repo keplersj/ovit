@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate pbr;
 extern crate positioned_io;
 
 use clap::{App, Arg};
@@ -12,6 +13,8 @@ use std::io::prelude::*;
 use std::ops::RangeInclusive;
 
 use std::vec::Vec;
+
+use pbr::{ProgressBar, Units};
 
 use positioned_io::ReadAt;
 
@@ -105,6 +108,21 @@ struct TivoDrive {
     partition_map: ApplePartitionMap,
 }
 
+fn correct_byte_order(raw_buffer: &[u8], is_byte_swapped: bool) -> Vec<u8> {
+    raw_buffer
+        .chunks_exact(2)
+        .map(|chunk| u16::from_be_bytes(chunk[0..2].try_into().unwrap()))
+        .map(|byte| {
+            if is_byte_swapped {
+                byte
+            } else {
+                byte.swap_bytes()
+            }
+        })
+        .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
+        .collect()
+}
+
 fn open_tivo_image(path: &str) -> Result<TivoDrive, &'static str> {
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -140,18 +158,8 @@ fn open_tivo_image(path: &str) -> Result<TivoDrive, &'static str> {
         }
     }
 
-    let partition_map_partition: Vec<u8> = partition_map_buffer
-        .chunks_exact(2)
-        .map(|chunk| u16::from_be_bytes(chunk[0..2].try_into().unwrap()))
-        .map(|byte| {
-            if is_byte_swapped {
-                byte
-            } else {
-                byte.swap_bytes()
-            }
-        })
-        .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
-        .collect();
+    let partition_map_partition: Vec<u8> =
+        correct_byte_order(&partition_map_buffer, is_byte_swapped);
 
     let driver_descriptor_map = Partition::new(partition_map_partition)
         .expect("Could not reconstruct Driver Descriptor Map");
@@ -163,18 +171,7 @@ fn open_tivo_image(path: &str) -> Result<TivoDrive, &'static str> {
         file.read_exact_at(512 * u64::from(offset), &mut raw_partition_buffer)
             .expect("Could not read block containing partition map");
 
-        let partition_buffer: Vec<u8> = raw_partition_buffer
-            .chunks_exact(2)
-            .map(|chunk| u16::from_be_bytes(chunk[0..2].try_into().unwrap()))
-            .map(|byte| {
-                if is_byte_swapped {
-                    byte
-                } else {
-                    byte.swap_bytes()
-                }
-            })
-            .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
-            .collect();
+        let partition_buffer: Vec<u8> = correct_byte_order(&raw_partition_buffer, is_byte_swapped);
 
         match Partition::new(partition_buffer) {
             Ok(partition) => {
@@ -206,5 +203,45 @@ fn main() {
     let input_path = matches.value_of("INPUT").unwrap();
 
     let tivo_image = open_tivo_image(input_path).expect("Could not open TiVo Drive Image");
-    println!("{:#?}", tivo_image);
+
+    let file = File::open(input_path).expect("Couldn't open image");
+
+    for mfs_partition in tivo_image
+        .partition_map
+        .partitions
+        .iter()
+        .filter(|partition| partition.r#type == "MFS")
+    {
+        println!("{:#?}", mfs_partition);
+
+        let mut partition_export =
+            File::create(format! {"/Volumes/External/{}.iso", mfs_partition.name})
+                .expect("Could not create file");
+
+        let mut pb = ProgressBar::new(u64::from(mfs_partition.sector_size) * 512u64);
+        pb.set_units(Units::Bytes);
+
+        for sector in 0..=mfs_partition.sector_size {
+
+            let mut buffer = vec![0; 512];
+            file.read_at(
+                u64::from(mfs_partition.starting_sector + sector) * 512u64,
+                &mut buffer,
+            )
+            .expect("Could not read partition from image");
+
+            let corrected_chunk = correct_byte_order(&buffer, true);
+
+            partition_export
+                .write_all(&corrected_chunk)
+                .expect("Could not export partition");
+
+            pb.add(512);
+        }
+
+        println!(
+            "Wrote {} partition to file at ./{}.iso",
+            mfs_partition.name, mfs_partition.name
+        )
+    }
 }
