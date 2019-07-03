@@ -15,7 +15,6 @@ use positioned_io::ReadAt;
 
 const TIVO_BOOT_MAGIC: u16 = 0x1492;
 const TIVO_BOOT_AMIGC: u16 = 0x9214;
-const APM_SIGNATURE: u16 = 0x504d;
 const APM_BLOCK_SIZE: usize = 512;
 
 #[derive(Debug)]
@@ -41,6 +40,10 @@ impl Partition {
         )
         .expect("Could not get signature from partition entry")
         .to_string();
+
+        if signature != "PM" {
+            return Err("Invalid signature in sector");
+        }
 
         let partitions_total = u32::from_be_bytes(
             bytes
@@ -123,7 +126,7 @@ impl Partition {
             r#type,
             starting_data_sector,
             data_sectors,
-            status
+            status,
         })
     }
 }
@@ -179,29 +182,37 @@ fn open_tivo_image(path: &str) -> Result<TivoDrive, &'static str> {
         .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
         .collect();
 
-    match u16::from_be_bytes(partition_map_partition[0..2].try_into().unwrap()) {
-        APM_SIGNATURE => {
-            // println!("Valid APM Partition entry in the second block!");
-        }
-        _ => {
-            // println!("Second block does not contain valid APM Partition entry");
-            return Err("Invalid Block at Offset 512");
-        }
-    }
-
     let driver_descriptor_map = Partition::new(partition_map_partition)
         .expect("Could not reconstruct Driver Descriptor Map");
-    // println!("Drive Descriptor Map: {:?}", driver_descriptor_map);
 
-    let partition_map = ApplePartitionMap {
-        partitions: vec![driver_descriptor_map],
-    };
-    // println!("Partition Map: {:?}", partition_map);
+    let mut partitions = vec![driver_descriptor_map];
 
-    let tivo_drive = TivoDrive { partition_map };
-    // println!("Tivo Drive: {:?}", tivo_drive);
+    for offset in 2..=partitions.get(0).unwrap().partitions_total {
+        let mut raw_partition_buffer = [0; APM_BLOCK_SIZE];
+        file.read_exact_at(512 * offset as u64, &mut raw_partition_buffer)
+            .expect("Could not read block containing partition map");
 
-    return Ok(tivo_drive);
+        let partition_buffer: Vec<u8> = raw_partition_buffer
+            .chunks_exact(2)
+            .map(|chunk| u16::from_be_bytes(chunk[0..2].try_into().unwrap()))
+            .map(|byte| match is_byte_swapped {
+                true => byte,
+                false => byte.swap_bytes(),
+            })
+            .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
+            .collect();
+
+        let partition = Partition::new(partition_buffer).expect(&format!(
+            "Could not reconstruct partition at offset {}",
+            512 * offset
+        ));
+
+        partitions.push(partition);
+    }
+
+    return Ok(TivoDrive {
+        partition_map: ApplePartitionMap { partitions },
+    });
 }
 
 fn main() {
