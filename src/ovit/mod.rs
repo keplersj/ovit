@@ -52,6 +52,18 @@ pub fn correct_byte_order(raw_buffer: &[u8], is_byte_swapped: bool) -> Vec<u8> {
         .collect()
 }
 
+pub fn get_block_from_drive(file: &File, location: u64) -> Result<Vec<u8>, String> {
+    let mut buffer = vec![0; APM_BLOCK_SIZE];
+
+    match file.read_at(location * APM_BLOCK_SIZE as u64, &mut buffer) {
+        Ok(_) => Ok(buffer),
+        Err(_) => Err(format!(
+            "Could not read block from file at location {}",
+            location
+        )),
+    }
+}
+
 #[derive(Debug)]
 pub struct Partition {
     pub signature: String,
@@ -145,30 +157,25 @@ impl TivoDrive {
         // The first block on a TiVo drive contain special TiVo magic,
         //  we're not worried about this for reconstructing the partition map.
         //  The partition entry describing the partition map should be in the second block (offet: 512)
-        let mut partition_map_buffer = [0; APM_BLOCK_SIZE];
-        match file.read_exact_at(512, &mut partition_map_buffer) {
-            Ok(_) => {}
+        let driver_descriptor_buffer = match get_block_from_drive(&file, 1) {
+            Ok(buffer) => correct_byte_order(&buffer, is_byte_swapped),
             Err(_) => {
                 return Err("Could not read block containing partition map");
             }
-        }
+        };
 
-
-        let partition_map_partition: Vec<u8> =
-            correct_byte_order(&partition_map_buffer, is_byte_swapped);
-
-        let driver_descriptor_map = Partition::new(partition_map_partition)
+        let driver_descriptor_map = Partition::new(driver_descriptor_buffer)
             .expect("Could not reconstruct Driver Descriptor Map");
 
         let mut partitions = vec![driver_descriptor_map];
 
         for offset in 2..=partitions.get(0).unwrap().partitions_total {
-            let mut raw_partition_buffer = [0; APM_BLOCK_SIZE];
-            file.read_exact_at(512 * u64::from(offset), &mut raw_partition_buffer)
-                .expect("Could not read block containing partition map");
-
-            let partition_buffer: Vec<u8> =
-                correct_byte_order(&raw_partition_buffer, is_byte_swapped);
+            let partition_buffer = match get_block_from_drive(&file, u64::from(offset)) {
+                Ok(buffer) => correct_byte_order(&buffer, is_byte_swapped),
+                Err(_) => {
+                    return Err("Could not read block containing partition map");
+                }
+            };
 
             match Partition::new(partition_buffer) {
                 Ok(partition) => {

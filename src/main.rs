@@ -2,7 +2,6 @@ mod ovit;
 
 extern crate clap;
 extern crate pbr;
-extern crate positioned_io;
 
 use clap::{App, Arg};
 
@@ -11,8 +10,6 @@ use std::fs::File;
 use std::io::prelude::*;
 
 use pbr::{ProgressBar, Units};
-
-use positioned_io::ReadAt;
 
 fn main() {
     let matches = App::new("oViT")
@@ -50,13 +47,11 @@ fn main() {
         pb.set_units(Units::Bytes);
 
         for sector in 0..=mfs_partition.sector_size {
-
-            let mut buffer = vec![0; 512];
-            file.read_at(
-                u64::from(mfs_partition.starting_sector + sector) * 512u64,
-                &mut buffer,
+            let buffer = ovit::get_block_from_drive(
+                &file,
+                u64::from(mfs_partition.starting_sector + sector),
             )
-            .expect("Could not read partition from image");
+            .expect("Could not get block from file");
 
             let corrected_chunk = ovit::correct_byte_order(&buffer, true);
 
