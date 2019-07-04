@@ -12,19 +12,25 @@ use std::vec::Vec;
 
 use positioned_io::ReadAt;
 
-const TIVO_BOOT_MAGIC: u16 = 0x1492;
-const TIVO_BOOT_AMIGC: u16 = 0x9214;
-const APM_BLOCK_SIZE: usize = 512;
+pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
+pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
+pub const APM_BLOCK_SIZE: usize = 512;
+pub const MFS32_HEADER_MAGIC: u32 = 0xABBA_FEED;
+pub const MFS64_HEADER_MAGIC: u32 = 0xEBBA_FEED;
 
-pub fn get_string_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> String {
-    String::from_utf8(
-        bytes
-            .get(range)
-            .expect("Could not get signature bytes from partition entry")
-            .to_vec(),
-    )
-    .expect("Could not get signature from partition entry")
-    .to_string()
+pub fn get_string_from_bytes_range(
+    bytes: &[u8],
+    range: RangeInclusive<usize>,
+) -> Result<String, String> {
+    match String::from_utf8(match bytes.get(range) {
+        Some(vec) => vec.to_vec(),
+        _ => {
+            return Err("Could not get bytes".to_string());
+        }
+    }) {
+        Ok(string) => Ok(string.to_string()),
+        Err(err) => Err(format!("Could not convert bytes to string: {:#X?}", err)),
+    }
 }
 
 pub fn get_u32_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> u32 {
@@ -79,7 +85,8 @@ pub struct Partition {
 
 impl Partition {
     pub fn new(bytes: Vec<u8>) -> Result<Partition, &'static str> {
-        let signature = get_string_from_bytes_range(&bytes, 0..=1);
+        let signature =
+            get_string_from_bytes_range(&bytes, 0..=1).expect("Could not get signature from bytes");
 
         if signature != "PM" {
             return Err("Invalid signature in sector");
@@ -92,10 +99,12 @@ impl Partition {
         let sector_size = get_u32_from_bytes_range(&bytes, 12..=15);
 
         let name = get_string_from_bytes_range(&bytes, 16..=47)
+            .expect("Could not get name from bytes")
             .trim_matches(char::from(0))
             .to_string();
 
         let r#type = get_string_from_bytes_range(&bytes, 48..=79)
+            .expect("Could not get type from bytes")
             .trim_matches(char::from(0))
             .to_string();
 

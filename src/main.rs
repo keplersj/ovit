@@ -1,15 +1,25 @@
 mod ovit;
 
 extern crate clap;
-extern crate pbr;
 
 use clap::{App, Arg};
 
 use std::fs::File;
 
-use std::io::prelude::*;
-
-use pbr::{ProgressBar, Units};
+#[derive(Debug)]
+struct MFSVolumeHeader {
+    state: u32,
+    magic: String,
+    checksum: u32,
+    root_fsid: u32,
+    firstpartsize: u32,
+    partitionlist: String,
+    total_sectors: u32,
+    zonemap_ptr: u32,
+    backup_zonemap_ptr: u32,
+    zonemap_size: u32,
+    next_fsid: u32
+}
 
 fn main() {
     let matches = App::new("oViT")
@@ -30,41 +40,41 @@ fn main() {
 
     let file = File::open(input_path).expect("Couldn't open image");
 
-    for mfs_partition in tivo_image
+    let app_region = tivo_image
         .partition_map
         .partitions
         .iter()
-        .filter(|partition| partition.r#type == "MFS")
-        .filter(|partition| partition.name.contains("application"))
-    {
-        println!("{:#?}", mfs_partition);
+        .find(|partition| partition.r#type == "MFS")
+        .unwrap();
 
-        let mut partition_export =
-            File::create(format! {"/Volumes/External/{}.iso", mfs_partition.name})
-                .expect("Could not create file");
+    println!("{:#?}", app_region);
 
-        let mut pb = ProgressBar::new(u64::from(mfs_partition.sector_size) * 512u64);
-        pb.set_units(Units::Bytes);
+    let app_region_block = ovit::correct_byte_order(
+        &ovit::get_block_from_drive(&file, u64::from(app_region.starting_sector)).unwrap(),
+        true,
+    );
 
-        for sector in 0..=mfs_partition.sector_size {
-            let buffer = ovit::get_block_from_drive(
-                &file,
-                u64::from(mfs_partition.starting_sector + sector),
-            )
-            .expect("Could not get block from file");
+    println!("{:X?}", app_region_block);
 
-            let corrected_chunk = ovit::correct_byte_order(&buffer, true);
+    let header = MFSVolumeHeader {
+        state: ovit::get_u32_from_bytes_range(&app_region_block, 0..=3),
+        magic: format!(
+            "{:X}",
+            ovit::get_u32_from_bytes_range(&app_region_block, 4..=7)
+        ),
+        checksum: ovit::get_u32_from_bytes_range(&app_region_block, 8..=11),
+        root_fsid: ovit::get_u32_from_bytes_range(&app_region_block, 16..=19),
+        firstpartsize: ovit::get_u32_from_bytes_range(&app_region_block, 20..=23),
+        partitionlist: ovit::get_string_from_bytes_range(&app_region_block, 36..=163)
+            .expect("Could not get device list from bytes")
+            .trim_matches(char::from(0))
+            .to_string(),
+        total_sectors: ovit::get_u32_from_bytes_range(&app_region_block, 164..=167),
+        zonemap_ptr: ovit::get_u32_from_bytes_range(&app_region_block, 196..=199),
+        backup_zonemap_ptr: ovit::get_u32_from_bytes_range(&app_region_block, 200..=203),
+        zonemap_size: ovit::get_u32_from_bytes_range(&app_region_block, 204..=207),
+        next_fsid: ovit::get_u32_from_bytes_range(&app_region_block, 216..=219),
+    };
 
-            partition_export
-                .write_all(&corrected_chunk)
-                .expect("Could not export partition");
-
-            pb.add(512);
-        }
-
-        println!(
-            "Wrote {} partition to file at ./{}.iso",
-            mfs_partition.name, mfs_partition.name
-        )
-    }
+    println!("{:#?}", header);
 }
