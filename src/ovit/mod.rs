@@ -59,7 +59,11 @@ pub fn correct_byte_order(raw_buffer: &[u8], is_byte_swapped: bool) -> Vec<u8> {
 }
 
 pub fn get_block_from_drive(file: &File, location: u64) -> Result<Vec<u8>, String> {
-    let mut buffer = vec![0; APM_BLOCK_SIZE];
+    get_blocks_from_drive(file, location, 1)
+}
+
+pub fn get_blocks_from_drive(file: &File, location: u64, count: usize) -> Result<Vec<u8>, String> {
+    let mut buffer = vec![0; APM_BLOCK_SIZE * count];
 
     match file.read_at(location * APM_BLOCK_SIZE as u64, &mut buffer) {
         Ok(_) => Ok(buffer),
@@ -134,8 +138,83 @@ pub struct ApplePartitionMap {
 }
 
 #[derive(Debug)]
+pub struct MFSVolumeHeader {
+    pub state: u32,
+    pub magic: String,
+    pub checksum: u32,
+    pub root_fsid: u32,
+    pub firstpartsize: u32,
+    pub partitionlist: String,
+    pub total_sectors: u32,
+    pub zonemap_ptr: u32,
+    pub backup_zonemap_ptr: u32,
+    pub zonemap_size: u32,
+    pub next_fsid: u32,
+}
+
+impl MFSVolumeHeader {
+    pub fn from_bytes(block: &[u8]) -> MFSVolumeHeader {
+        MFSVolumeHeader {
+            state: get_u32_from_bytes_range(block, 0..=3),
+            magic: format!("{:X}", get_u32_from_bytes_range(block, 4..=7)),
+            checksum: get_u32_from_bytes_range(block, 8..=11),
+            root_fsid: get_u32_from_bytes_range(block, 16..=19),
+            firstpartsize: get_u32_from_bytes_range(block, 20..=23),
+            partitionlist: get_string_from_bytes_range(block, 36..=163)
+                .expect("Could not get device list from bytes")
+                .trim_matches(char::from(0))
+                .to_string(),
+            total_sectors: get_u32_from_bytes_range(block, 164..=167),
+            zonemap_ptr: get_u32_from_bytes_range(block, 196..=199),
+            backup_zonemap_ptr: get_u32_from_bytes_range(block, 200..=203),
+            zonemap_size: get_u32_from_bytes_range(block, 204..=207),
+            next_fsid: get_u32_from_bytes_range(block, 216..=219),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct MFSZoneMap {
+    pub sector: u32,
+    pub backup_sector: u32,
+    pub zonemap_size: u32,
+    pub next_zonemap_ptr: u32,
+    pub backup_next_zonemap_ptr: u32,
+    pub next_zonemap_size: u32,
+    pub r#type: u32,
+    pub crc: u32,
+    pub zone_start: u32,
+    pub next_zone_ptr1: u32,
+    pub zone_size: u32,
+    pub per_chunk: u32,
+    pub buddy_size: u32,
+}
+
+impl MFSZoneMap {
+    pub fn from_bytes(block: &[u8]) -> MFSZoneMap {
+        MFSZoneMap {
+            sector: get_u32_from_bytes_range(block, 0..=3),
+            backup_sector: get_u32_from_bytes_range(block, 4..=7),
+            zonemap_size: get_u32_from_bytes_range(block, 8..=11),
+            next_zonemap_ptr: get_u32_from_bytes_range(block, 12..=15),
+            backup_next_zonemap_ptr: get_u32_from_bytes_range(block, 16..=19),
+            next_zonemap_size: get_u32_from_bytes_range(block, 20..=23),
+            r#type: get_u32_from_bytes_range(block, 28..=31),
+            crc: get_u32_from_bytes_range(block, 36..=39),
+            zone_start: get_u32_from_bytes_range(block, 40..=43),
+            next_zone_ptr1: get_u32_from_bytes_range(block, 44..=47),
+            zone_size: get_u32_from_bytes_range(block, 48..=51),
+            per_chunk: get_u32_from_bytes_range(block, 52..=55),
+            buddy_size: get_u32_from_bytes_range(block, 60..=63),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct TivoDrive {
     pub partition_map: ApplePartitionMap,
+    pub volume_header: MFSVolumeHeader,
+    pub zones: Vec<MFSZoneMap>,
 }
 
 impl TivoDrive {
@@ -194,11 +273,40 @@ impl TivoDrive {
                     return Err(err);
                 }
             }
-
         }
 
+        let partition_map = ApplePartitionMap { partitions };
+
+        let app_region = partition_map
+            .partitions
+            .iter()
+            .find(|partition| partition.r#type == "MFS")
+            .unwrap();
+
+        let app_region_block = correct_byte_order(
+            &get_block_from_drive(&file, u64::from(app_region.starting_sector)).unwrap(),
+            true,
+        );
+
+        let volume_header = MFSVolumeHeader::from_bytes(&app_region_block);
+
+        let zonemap_block = correct_byte_order(
+            &get_block_from_drive(
+                &file,
+                u64::from(app_region.starting_sector + volume_header.zonemap_ptr),
+            )
+            .unwrap(),
+            true,
+        );
+
+        let first_zonemap = MFSZoneMap::from_bytes(&zonemap_block);
+
+        let zones = vec![first_zonemap];
+
         Ok(TivoDrive {
-            partition_map: ApplePartitionMap { partitions },
+            partition_map,
+            volume_header,
+            zones,
         })
     }
 }
