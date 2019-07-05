@@ -285,23 +285,54 @@ impl TivoDrive {
 
         let app_region_block = correct_byte_order(
             &get_block_from_drive(&file, u64::from(app_region.starting_sector)).unwrap(),
-            true,
+            is_byte_swapped,
         );
 
         let volume_header = MFSVolumeHeader::from_bytes(&app_region_block);
 
-        let zonemap_block = correct_byte_order(
+        let first_zonemap_block = correct_byte_order(
             &get_block_from_drive(
                 &file,
                 u64::from(app_region.starting_sector + volume_header.zonemap_ptr),
             )
             .unwrap(),
-            true,
+            is_byte_swapped,
         );
 
-        let first_zonemap = MFSZoneMap::from_bytes(&zonemap_block);
+        let first_zonemap = MFSZoneMap::from_bytes(&first_zonemap_block);
 
-        let zones = vec![first_zonemap];
+        let mut zones = vec![first_zonemap];
+
+        let mut next_zone_ptr = zones[0].next_zonemap_ptr;
+        let mut next_zone_size = zones[0].next_zonemap_size;
+
+        while next_zone_ptr != 0 {
+            let zonemap_bytes = correct_byte_order(
+                &match get_blocks_from_drive(
+                    &file,
+                    u64::from(app_region.starting_sector + next_zone_ptr),
+                    next_zone_size as usize,
+                ) {
+                    Ok(blocks) => blocks,
+                    Err(_) => {
+                        println!(
+                            "Couldn't load zonemap blocks at ptr and size: {}, {}",
+                            next_zone_ptr, next_zone_size
+                        );
+                        println!("Lazilly continuing");
+                        break;
+                    }
+                },
+                is_byte_swapped,
+            );
+
+            let zonemap = MFSZoneMap::from_bytes(&zonemap_bytes);
+
+            next_zone_ptr = zonemap.next_zonemap_ptr;
+            next_zone_size = zonemap.next_zonemap_size;
+
+            zones.push(zonemap);
+        }
 
         Ok(TivoDrive {
             partition_map,
