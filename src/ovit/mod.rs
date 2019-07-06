@@ -33,14 +33,15 @@ pub fn get_string_from_bytes_range(
     }
 }
 
-pub fn get_u32_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> u32 {
-    u32::from_be_bytes(
-        bytes
-            .get(range)
-            .expect("Could not get partitions total from partition entry")
-            .try_into()
-            .unwrap(),
-    )
+pub fn get_u32_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> Result<u32, String> {
+    Ok(u32::from_be_bytes(
+        match bytes.get(range) {
+            Some(bytes) => bytes,
+            _ => return Err("Could not get bytes from range".to_string()),
+        }
+        .try_into()
+        .unwrap(),
+    ))
 }
 
 pub fn correct_byte_order(raw_buffer: &[u8], is_byte_swapped: bool) -> Vec<u8> {
@@ -96,11 +97,14 @@ impl Partition {
             return Err("Invalid signature in sector");
         }
 
-        let partitions_total = get_u32_from_bytes_range(&bytes, 4..=7);
+        let partitions_total =
+            get_u32_from_bytes_range(&bytes, 4..=7).expect("Could not get partitions total");
 
-        let starting_sector = get_u32_from_bytes_range(&bytes, 8..=11);
+        let starting_sector =
+            get_u32_from_bytes_range(&bytes, 8..=11).expect("Could not get starting sector");
 
-        let sector_size = get_u32_from_bytes_range(&bytes, 12..=15);
+        let sector_size =
+            get_u32_from_bytes_range(&bytes, 12..=15).expect("Could not get sector size");
 
         let name = get_string_from_bytes_range(&bytes, 16..=47)
             .expect("Could not get name from bytes")
@@ -112,11 +116,16 @@ impl Partition {
             .trim_matches(char::from(0))
             .to_string();
 
-        let starting_data_sector = get_u32_from_bytes_range(&bytes, 80..=83);
+        let starting_data_sector =
+            get_u32_from_bytes_range(&bytes, 80..=83).expect("Could not get starting data sector");
 
-        let data_sectors = get_u32_from_bytes_range(&bytes, 84..=87);
+        let data_sectors =
+            get_u32_from_bytes_range(&bytes, 84..=87).expect("Could not get data sectors");
 
-        let status = format!("{:#X}", get_u32_from_bytes_range(&bytes, 88..=91));
+        let status = format!(
+            "{:#X}",
+            get_u32_from_bytes_range(&bytes, 88..=91).expect("Could not get status")
+        );
 
         Ok(Partition {
             signature,
@@ -155,20 +164,49 @@ pub struct MFSVolumeHeader {
 impl MFSVolumeHeader {
     pub fn from_bytes(block: &[u8]) -> MFSVolumeHeader {
         MFSVolumeHeader {
-            state: get_u32_from_bytes_range(block, 0..=3),
-            magic: format!("{:X}", get_u32_from_bytes_range(block, 4..=7)),
-            checksum: get_u32_from_bytes_range(block, 8..=11),
-            root_fsid: get_u32_from_bytes_range(block, 16..=19),
-            firstpartsize: get_u32_from_bytes_range(block, 20..=23),
+            state: get_u32_from_bytes_range(block, 0..=3).expect("Could not get state"),
+            magic: format!(
+                "{:X}",
+                get_u32_from_bytes_range(block, 4..=7).expect("Could not get magic")
+            ),
+            checksum: get_u32_from_bytes_range(block, 8..=11).expect("Could not get checksum"),
+            root_fsid: get_u32_from_bytes_range(block, 16..=19).expect("Could not get root fsid"),
+            firstpartsize: get_u32_from_bytes_range(block, 20..=23)
+                .expect("Could not get first partition size"),
             partitionlist: get_string_from_bytes_range(block, 36..=163)
                 .expect("Could not get device list from bytes")
                 .trim_matches(char::from(0))
                 .to_string(),
-            total_sectors: get_u32_from_bytes_range(block, 164..=167),
-            zonemap_ptr: get_u32_from_bytes_range(block, 196..=199),
-            backup_zonemap_ptr: get_u32_from_bytes_range(block, 200..=203),
-            zonemap_size: get_u32_from_bytes_range(block, 204..=207),
-            next_fsid: get_u32_from_bytes_range(block, 216..=219),
+            total_sectors: get_u32_from_bytes_range(block, 164..=167)
+                .expect("Could not get total sectors"),
+            zonemap_ptr: get_u32_from_bytes_range(block, 196..=199)
+                .expect("Could not get zonemap pointer"),
+            backup_zonemap_ptr: get_u32_from_bytes_range(block, 200..=203)
+                .expect("Could not get backup zonemap pointer"),
+            zonemap_size: get_u32_from_bytes_range(block, 204..=207)
+                .expect("Could not get zonemap size"),
+            next_fsid: get_u32_from_bytes_range(block, 216..=219).expect("Could not get next fsid"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum MFSZoneType {
+    INode,
+    Application,
+    Media,
+    Max,
+    Unknown(u32),
+}
+
+impl MFSZoneType {
+    pub fn from_u32(n: u32) -> MFSZoneType {
+        match n {
+            0 => MFSZoneType::INode,
+            1 => MFSZoneType::Application,
+            2 => MFSZoneType::Media,
+            3 => MFSZoneType::Max,
+            _ => MFSZoneType::Unknown(n),
         }
     }
 }
@@ -181,31 +219,52 @@ pub struct MFSZoneMap {
     pub next_zonemap_ptr: u32,
     pub backup_next_zonemap_ptr: u32,
     pub next_zonemap_size: u32,
-    pub r#type: u32,
-    pub crc: u32,
-    pub zone_start: u32,
-    pub next_zone_ptr1: u32,
-    pub zone_size: u32,
-    pub per_chunk: u32,
-    pub buddy_size: u32,
+    pub next_zonemap_partition_size: u32,
+    pub next_zonemap_min_allocation: u32,
+    pub logstamp: u32,
+    pub r#type: MFSZoneType,
+    pub checksum: u32,
+    pub first_sector: u32,
+    pub last_sector: u32,
+    pub size: u32,
+    pub min_allocations: u32,
+    pub free_space: u32,
+    pub bitmap_num: u32,
 }
 
 impl MFSZoneMap {
     pub fn from_bytes(block: &[u8]) -> MFSZoneMap {
         MFSZoneMap {
-            sector: get_u32_from_bytes_range(block, 0..=3),
-            backup_sector: get_u32_from_bytes_range(block, 4..=7),
-            zonemap_size: get_u32_from_bytes_range(block, 8..=11),
-            next_zonemap_ptr: get_u32_from_bytes_range(block, 12..=15),
-            backup_next_zonemap_ptr: get_u32_from_bytes_range(block, 16..=19),
-            next_zonemap_size: get_u32_from_bytes_range(block, 20..=23),
-            r#type: get_u32_from_bytes_range(block, 28..=31),
-            crc: get_u32_from_bytes_range(block, 36..=39),
-            zone_start: get_u32_from_bytes_range(block, 40..=43),
-            next_zone_ptr1: get_u32_from_bytes_range(block, 44..=47),
-            zone_size: get_u32_from_bytes_range(block, 48..=51),
-            per_chunk: get_u32_from_bytes_range(block, 52..=55),
-            buddy_size: get_u32_from_bytes_range(block, 60..=63),
+            sector: get_u32_from_bytes_range(block, 0..=3).expect("Could not get sector"),
+            backup_sector: get_u32_from_bytes_range(block, 4..=7)
+                .expect("Could not get backup sector"),
+            zonemap_size: get_u32_from_bytes_range(block, 8..=11)
+                .expect("Could not get zonemap size"),
+            next_zonemap_ptr: get_u32_from_bytes_range(block, 12..=15)
+                .expect("Could not get next zonemap pointer"),
+            backup_next_zonemap_ptr: get_u32_from_bytes_range(block, 16..=19)
+                .expect("Could not get backup new zonemap pointer"),
+            next_zonemap_size: get_u32_from_bytes_range(block, 20..=23)
+                .expect("Could not get next zonemap size"),
+            next_zonemap_partition_size: get_u32_from_bytes_range(block, 24..=27)
+                .expect("Could not get next zonemap partition size"),
+            next_zonemap_min_allocation: get_u32_from_bytes_range(block, 28..=31)
+                .expect("Could not get next zonemap minimum allocation"),
+            r#type: MFSZoneType::from_u32(
+                get_u32_from_bytes_range(block, 32..=35).expect("Could not get type"),
+            ),
+            logstamp: get_u32_from_bytes_range(block, 36..=39).expect("Could not get logstamp"),
+            checksum: get_u32_from_bytes_range(block, 40..=43).expect("Could not get checksum"),
+            first_sector: get_u32_from_bytes_range(block, 44..=47)
+                .expect("Could not get first sector"),
+            last_sector: get_u32_from_bytes_range(block, 48..=51)
+                .expect("Could not get last sector"),
+            size: get_u32_from_bytes_range(block, 52..=55).expect("Could not get size"),
+            min_allocations: get_u32_from_bytes_range(block, 56..=59)
+                .expect("Could not get minimum allocations"),
+            free_space: get_u32_from_bytes_range(block, 60..=63).expect("Could not get free space"),
+            bitmap_num: get_u32_from_bytes_range(block, 68..=71)
+                .expect("Could not get bitmap number"),
         }
     }
 }
