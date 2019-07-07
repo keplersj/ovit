@@ -33,6 +33,17 @@ pub fn get_string_from_bytes_range(
     }
 }
 
+pub fn get_u16_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> Result<u16, String> {
+    Ok(u16::from_be_bytes(
+        match bytes.get(range) {
+            Some(bytes) => bytes,
+            _ => return Err("Could not get bytes from range".to_string()),
+        }
+        .try_into()
+        .unwrap(),
+    ))
+}
+
 pub fn get_u32_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> Result<u32, String> {
     Ok(u32::from_be_bytes(
         match bytes.get(range) {
@@ -190,7 +201,7 @@ impl MFSVolumeHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum MFSZoneType {
     INode,
     Application,
@@ -269,11 +280,165 @@ impl MFSZoneMap {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum MFSINodeType {
+    Node,
+    File,
+    Stream,
+    Dir,
+    Db,
+    Unknown(u8),
+}
+
+impl MFSINodeType {
+    pub fn from_u8(n: u8) -> MFSINodeType {
+        match n {
+            0 => MFSINodeType::Node,
+            1 => MFSINodeType::File,
+            2 => MFSINodeType::Stream,
+            4 => MFSINodeType::Dir,
+            8 => MFSINodeType::Db,
+            _ => MFSINodeType::Unknown(n),
+        }
+    }
+}
+
+/*
+INode struct from mfs-utils:
+struct mfs_inode {
+    u32 id;
+    u32 typexx;
+    u32 fill1[3];
+    u32 units;
+    u32 size;
+    u32 used_units;
+    u32 used_size;
+    /* XXX fill2 used to be fill2[3]. used_* came out of elements
+     * 0 and 1
+     */
+    u32 fill2;
+    u8  type;
+    u8  fill3;
+    u16 fill4;
+    u32 fill5;
+    u32 crc;
+    u32 flags;
+    u32 num_runs;
+    union {
+        // cwingert - There are possible more than 24 runs, just fill up
+        // the data space
+        // struct mfs_run runs[24];
+        struct mfs_run runs[56];
+        char data[452];
+    } u;
+};
+*/
+
+/*
+INode struct from mfstools:
+typedef struct mfs_inode_s
+{
+    unsigned int fsid;			/* This FSID */
+    unsigned int refcount;		/* References to this FSID */
+    unsigned int bootcycles;	/* Number of boot cycles as of modification */
+    unsigned int bootsecs;		/* Seconds since boot of modification */
+    unsigned int inode;			/* Should be (sectornum - 1122) / 2 */
+    unsigned int unk3;			/* Also block size? */
+    unsigned int size;			/* In bytes or blocksize sized blocks */
+    unsigned int blocksize;
+    unsigned int blockused;
+    unsigned int lastmodified;	/* In seconds since epoch */
+    fsid_type type;				/* For files not referenced by filesystem */
+    unsigned char zone;
+    unsigned short pad;		/* Unused space, underlying 0xdeadbeef shows */
+    unsigned int sig;			/* Seems to be 0x91231ebc */
+    unsigned int checksum;
+    unsigned int inode_flags;	/* It seems to be flags at least. */
+    unsigned int numblocks;		/* Number of data blocks. */
+    union
+    {
+        struct
+        {
+            unsigned int sector;
+            unsigned int count;
+        }
+        d32[0];
+        struct
+        {
+            uint64_t sector;
+            uint32_t count;
+        }
+        d64[0];
+    } datablocks;
+}
+*/
+#[derive(Debug)]
+pub struct MFSINode {
+    pub fsid: u32,
+    pub refcount: u32,
+    pub bootcycles: u32,
+    pub bootsecs: u32,
+    pub inode: u32,
+    pub unk3: u32,
+    pub size: u32,
+    pub blocksize: u32,
+    pub blockused: u32,
+    pub last_modified: u32,
+    pub r#type: MFSINodeType,
+    pub zone: u8,
+    pub pad: u16,
+    pub sig: String,
+    pub checksum: u32,
+    pub flags: String,
+    pub numblocks: u32,
+    pub data_block_sector: u32,
+    pub data_block_count: u32,
+}
+
+impl MFSINode {
+    pub fn from_bytes(block: &[u8]) -> MFSINode {
+        MFSINode {
+            fsid: get_u32_from_bytes_range(block, 0..=3).expect("Could not get id"),
+            refcount: get_u32_from_bytes_range(block, 4..=7).expect("Could not get refcount"),
+            bootcycles: get_u32_from_bytes_range(block, 8..=11).expect("Could not get bootcycles"),
+            bootsecs: get_u32_from_bytes_range(block, 12..=15).expect("Could not get bootsecs"),
+            inode: get_u32_from_bytes_range(block, 16..=19).expect("Could not get inode"),
+            unk3: get_u32_from_bytes_range(block, 20..=23).expect("Could not get unknown"),
+            size: get_u32_from_bytes_range(block, 24..=27).expect("Could not get size"),
+            blocksize: get_u32_from_bytes_range(block, 28..=31)
+                .expect("Could not get used block size"),
+            blockused: get_u32_from_bytes_range(block, 32..=35)
+                .expect("Could not get used block used"),
+            last_modified: get_u32_from_bytes_range(block, 36..=39)
+                .expect("Could not get last modified"),
+            r#type: MFSINodeType::from_u8(*block.get(40).expect("Could not get type")),
+            zone: *block.get(41).expect("Could not get zone"),
+            pad: get_u16_from_bytes_range(block, 42..=43).expect("Could not get pad"),
+            sig: format!(
+                "{:#X}",
+                get_u32_from_bytes_range(block, 44..=47).expect("Could not get sig")
+            ),
+            checksum: get_u32_from_bytes_range(block, 48..=51).expect("Could not get checksum"),
+            flags: format!(
+                "{:#X}",
+                get_u32_from_bytes_range(block, 52..=55).expect("Could not get flags")
+            ),
+            numblocks: get_u32_from_bytes_range(block, 56..=59)
+                .expect("Could not get number of blocks"),
+            data_block_sector: get_u32_from_bytes_range(block, 60..=63)
+                .expect("Could not get sector of datablocks"),
+            data_block_count: get_u32_from_bytes_range(block, 64..=67)
+                .expect("Could not get number of datablocks"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct TivoDrive {
     pub partition_map: ApplePartitionMap,
     pub volume_header: MFSVolumeHeader,
     pub zones: Vec<MFSZoneMap>,
+    pub inodes: Vec<MFSINode>,
 }
 
 impl TivoDrive {
@@ -393,10 +558,32 @@ impl TivoDrive {
             zones.push(zonemap);
         }
 
+        let inode_zone = zones
+            .iter()
+            .find(|zone| zone.r#type == MFSZoneType::INode)
+            .unwrap();
+
+        let mut inodes: Vec<MFSINode> = vec![];
+
+        for sector in 0..inode_zone.size {
+            let disk_sector =
+                u64::from(app_region.starting_sector + inode_zone.first_sector + sector);
+            let block = correct_byte_order(
+                &get_block_from_drive(&file, disk_sector).expect("Could not get block from drive"),
+                is_byte_swapped,
+            );
+            let inode = MFSINode::from_bytes(&block);
+
+            if inode.fsid != 0 {
+                inodes.push(inode);
+            }
+        }
+
         Ok(TivoDrive {
             partition_map,
             volume_header,
             zones,
+            inodes,
         })
     }
 }
