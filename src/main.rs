@@ -52,12 +52,4 @@ fn main() {
     println!("Stream Count: {:#?}", stream_count);
     println!("Dir Count: {:#?}", dir_count);
     println!("Db Count: {:#?}", db_count);
-
-    for inode in tivo_image
-        .inodes
-        .iter()
-        .filter(|inode| inode.r#type == ovit::MFSINodeType::Db)
-    {
-        println!("{:#?} {}: {:#?}", inode.r#type, inode.fsid, inode);
-    }
 }

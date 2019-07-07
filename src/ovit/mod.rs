@@ -1,74 +1,28 @@
 extern crate positioned_io;
 
+mod apple_partition_map;
+
+mod util;
+
+use apple_partition_map::{ApplePartitionMap, Partition};
+
+use positioned_io::ReadAt;
+
 use std::convert::TryInto;
 
 use std::fs::File;
 
 use std::io::prelude::*;
 
-use std::ops::RangeInclusive;
-
 use std::vec::Vec;
 
-use positioned_io::ReadAt;
+use util::{get_u16_from_bytes_range, get_u32_from_bytes_range, get_string_from_bytes_range, correct_byte_order};
 
 pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
 pub const APM_BLOCK_SIZE: usize = 512;
 pub const MFS32_HEADER_MAGIC: u32 = 0xABBA_FEED;
 pub const MFS64_HEADER_MAGIC: u32 = 0xEBBA_FEED;
-
-pub fn get_string_from_bytes_range(
-    bytes: &[u8],
-    range: RangeInclusive<usize>,
-) -> Result<String, String> {
-    match String::from_utf8(match bytes.get(range) {
-        Some(vec) => vec.to_vec(),
-        _ => {
-            return Err("Could not get bytes".to_string());
-        }
-    }) {
-        Ok(string) => Ok(string.to_string()),
-        Err(err) => Err(format!("Could not convert bytes to string: {:#X?}", err)),
-    }
-}
-
-pub fn get_u16_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> Result<u16, String> {
-    Ok(u16::from_be_bytes(
-        match bytes.get(range) {
-            Some(bytes) => bytes,
-            _ => return Err("Could not get bytes from range".to_string()),
-        }
-        .try_into()
-        .unwrap(),
-    ))
-}
-
-pub fn get_u32_from_bytes_range(bytes: &[u8], range: RangeInclusive<usize>) -> Result<u32, String> {
-    Ok(u32::from_be_bytes(
-        match bytes.get(range) {
-            Some(bytes) => bytes,
-            _ => return Err("Could not get bytes from range".to_string()),
-        }
-        .try_into()
-        .unwrap(),
-    ))
-}
-
-pub fn correct_byte_order(raw_buffer: &[u8], is_byte_swapped: bool) -> Vec<u8> {
-    raw_buffer
-        .chunks_exact(2)
-        .map(|chunk| u16::from_be_bytes(chunk[0..2].try_into().unwrap()))
-        .map(|byte| {
-            if is_byte_swapped {
-                byte
-            } else {
-                byte.swap_bytes()
-            }
-        })
-        .flat_map(|byte| -> Vec<u8> { byte.to_ne_bytes().to_vec() })
-        .collect()
-}
 
 pub fn get_block_from_drive(file: &File, location: u64) -> Result<Vec<u8>, String> {
     get_blocks_from_drive(file, location, 1)
@@ -84,77 +38,6 @@ pub fn get_blocks_from_drive(file: &File, location: u64, count: usize) -> Result
             location
         )),
     }
-}
-
-#[derive(Debug)]
-pub struct Partition {
-    pub signature: String,
-    pub partitions_total: u32,
-    pub starting_sector: u32,
-    pub sector_size: u32,
-    pub name: String,
-    pub r#type: String,
-    pub starting_data_sector: u32,
-    pub data_sectors: u32,
-    pub status: String,
-}
-
-impl Partition {
-    pub fn new(bytes: Vec<u8>) -> Result<Partition, &'static str> {
-        let signature =
-            get_string_from_bytes_range(&bytes, 0..=1).expect("Could not get signature from bytes");
-
-        if signature != "PM" {
-            return Err("Invalid signature in sector");
-        }
-
-        let partitions_total =
-            get_u32_from_bytes_range(&bytes, 4..=7).expect("Could not get partitions total");
-
-        let starting_sector =
-            get_u32_from_bytes_range(&bytes, 8..=11).expect("Could not get starting sector");
-
-        let sector_size =
-            get_u32_from_bytes_range(&bytes, 12..=15).expect("Could not get sector size");
-
-        let name = get_string_from_bytes_range(&bytes, 16..=47)
-            .expect("Could not get name from bytes")
-            .trim_matches(char::from(0))
-            .to_string();
-
-        let r#type = get_string_from_bytes_range(&bytes, 48..=79)
-            .expect("Could not get type from bytes")
-            .trim_matches(char::from(0))
-            .to_string();
-
-        let starting_data_sector =
-            get_u32_from_bytes_range(&bytes, 80..=83).expect("Could not get starting data sector");
-
-        let data_sectors =
-            get_u32_from_bytes_range(&bytes, 84..=87).expect("Could not get data sectors");
-
-        let status = format!(
-            "{:#X}",
-            get_u32_from_bytes_range(&bytes, 88..=91).expect("Could not get status")
-        );
-
-        Ok(Partition {
-            signature,
-            partitions_total,
-            starting_sector,
-            sector_size,
-            name,
-            r#type,
-            starting_data_sector,
-            data_sectors,
-            status,
-        })
-    }
-}
-
-#[derive(Debug)]
-pub struct ApplePartitionMap {
-    pub partitions: Vec<Partition>,
 }
 
 #[derive(Debug)]
