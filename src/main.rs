@@ -21,5 +21,43 @@ fn main() {
     let tivo_image =
         ovit::TivoDrive::from_disk_image(input_path).expect("Could not open TiVo Drive Image");
 
-    println!("{:#?}", tivo_image);
+    let node_count = tivo_image
+        .inodes
+        .iter()
+        .filter(|inode| inode.r#type == ovit::MFSINodeType::Node)
+        .count();
+    let file_count = tivo_image
+        .inodes
+        .iter()
+        .filter(|inode| inode.r#type == ovit::MFSINodeType::File)
+        .count();
+    let stream_count = tivo_image
+        .inodes
+        .iter()
+        .filter(|inode| inode.r#type == ovit::MFSINodeType::Stream)
+        .count();
+    let dir_count = tivo_image
+        .inodes
+        .iter()
+        .filter(|inode| inode.r#type == ovit::MFSINodeType::Dir)
+        .count();
+    let db_count = tivo_image
+        .inodes
+        .iter()
+        .filter(|inode| inode.r#type == ovit::MFSINodeType::Db)
+        .count();
+
+    println!("Node Count: {:#?}", node_count);
+    println!("File Count: {:#?}", file_count);
+    println!("Stream Count: {:#?}", stream_count);
+    println!("Dir Count: {:#?}", dir_count);
+    println!("Db Count: {:#?}", db_count);
+
+    for inode in tivo_image
+        .inodes
+        .iter()
+        .filter(|inode| inode.r#type == ovit::MFSINodeType::Db)
+    {
+        println!("{:#?} {}: {:#?}", inode.r#type, inode.fsid, inode);
+    }
 }

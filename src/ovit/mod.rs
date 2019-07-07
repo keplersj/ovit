@@ -566,16 +566,20 @@ impl TivoDrive {
         let mut inodes: Vec<MFSINode> = vec![];
 
         for sector in 0..inode_zone.size {
-            let disk_sector =
-                u64::from(app_region.starting_sector + inode_zone.first_sector + sector);
-            let block = correct_byte_order(
-                &get_block_from_drive(&file, disk_sector).expect("Could not get block from drive"),
-                is_byte_swapped,
-            );
-            let inode = MFSINode::from_bytes(&block);
+            // Every inode is stored twice, only load every other
+            if sector == 0 || sector % 2 == 0 {
+                let disk_sector =
+                    u64::from(app_region.starting_sector + inode_zone.first_sector + sector);
+                let block = correct_byte_order(
+                    &get_block_from_drive(&file, disk_sector)
+                        .expect("Could not get block from drive"),
+                    is_byte_swapped,
+                );
+                let inode = MFSINode::from_bytes(&block);
 
-            if inode.fsid != 0 {
-                inodes.push(inode);
+                if inode.fsid != 0 {
+                    inodes.push(inode);
+                }
             }
         }
 
