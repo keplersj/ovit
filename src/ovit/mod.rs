@@ -160,10 +160,9 @@ impl TivoDrive {
                     Ok(blocks) => blocks,
                     Err(_) => {
                         println!(
-                            "Couldn't load zonemap blocks at ptr and size: {}, {}",
+                            "Couldn't load block at sector {} and size {}:",
                             next_zone_ptr, next_zone_size
                         );
-                        println!("Lazilly continuing");
                         break;
                     }
                 },
@@ -172,8 +171,14 @@ impl TivoDrive {
 
             let zonemap = match MFSZoneMap::parse(&zonemap_bytes) {
                 Ok((_, zonemap)) => zonemap,
-                Err(err) => {
-                    return Err(format!("Could not parse zonemap: {:?}", err));
+                Err(_err) => {
+                    println!(
+                        "Couldn't parse zonemap blocks at sector {} and size {}:,",
+                        next_zone_ptr, next_zone_size
+                    );
+                    // println!("Parser error: {:?}", err);
+                    println!("Lazilly continuing");
+                    break;
                 }
             };
 

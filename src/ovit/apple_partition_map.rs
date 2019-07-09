@@ -1,8 +1,10 @@
 extern crate nom;
 
 use nom::{
-    bytes::complete::tag, bytes::complete::take, error::ErrorKind, number::complete::be_u32, Err,
-    IResult,
+    bytes::complete::{tag, take},
+    error::ErrorKind,
+    number::complete::be_u32,
+    Err, IResult,
 };
 
 #[derive(Debug, PartialEq)]

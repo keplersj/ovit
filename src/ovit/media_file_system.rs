@@ -1,8 +1,10 @@
 extern crate nom;
 
 use nom::{
-    bytes::complete::tag, bytes::complete::take, error::ErrorKind, number::complete::be_u16,
-    number::complete::be_u32, number::complete::be_u8, Err, IResult,
+    bytes::complete::{tag, take},
+    error::ErrorKind,
+    number::complete::{be_u16, be_u32, be_u8},
+    Err, IResult,
 };
 
 fn string(input: &[u8]) -> IResult<&[u8], String> {
@@ -77,11 +79,10 @@ impl MFSVolumeHeader {
 
 #[derive(Debug, PartialEq)]
 pub enum MFSZoneType {
-    INode,
-    Application,
-    Media,
-    Max,
-    Unknown(u32),
+    INode = 0,
+    Application = 1,
+    Media = 2,
+    Max = 3,
 }
 
 impl MFSZoneType {
@@ -92,7 +93,7 @@ impl MFSZoneType {
             1 => Ok((input, MFSZoneType::Application)),
             2 => Ok((input, MFSZoneType::Media)),
             3 => Ok((input, MFSZoneType::Max)),
-            _ => Ok((input, MFSZoneType::Unknown(n))),
+            _ => Err(Err::Error((input, ErrorKind::NoneOf))),
         }
     }
 }
@@ -136,7 +137,7 @@ impl MFSZoneMap {
         let (input, size) = be_u32(input)?;
         let (input, min_allocations) = be_u32(input)?;
         let (input, free_space) = be_u32(input)?;
-        let (input, _) = take(4 as usize)(input)?;
+        let (input, _) = tag([0, 0, 0, 0])(input)?;
         let (input, bitmap_num) = be_u32(input)?;
 
         Ok((
@@ -166,12 +167,11 @@ impl MFSZoneMap {
 
 #[derive(Debug, PartialEq)]
 pub enum MFSINodeType {
-    Node,
-    File,
-    Stream,
-    Dir,
-    Db,
-    Unknown(u8),
+    Node = 0,
+    File = 1,
+    Stream = 2,
+    Dir = 4,
+    Db = 8,
 }
 
 impl MFSINodeType {
@@ -183,7 +183,7 @@ impl MFSINodeType {
             2 => Ok((input, MFSINodeType::Stream)),
             4 => Ok((input, MFSINodeType::Dir)),
             8 => Ok((input, MFSINodeType::Db)),
-            _ => Ok((input, MFSINodeType::Unknown(n))),
+            _ => Err(Err::Error((input, ErrorKind::NoneOf))),
         }
     }
 }
