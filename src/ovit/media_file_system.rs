@@ -195,7 +195,6 @@ pub struct MFSINode {
     pub bootcycles: u32,
     pub bootsecs: u32,
     pub inode: u32,
-    pub unk3: u32,
     pub size: u32,
     pub blocksize: u32,
     pub blockused: u32,
@@ -216,8 +215,8 @@ impl MFSINode {
         let (input, refcount) = be_u32(input)?;
         let (input, bootcycles) = be_u32(input)?;
         let (input, bootsecs) = be_u32(input)?;
-        let (input, inode) = be_u32(input)?;
-        let (input, unk3) = be_u32(input)?;
+        let (input, inode) = be_u32(input)?; // Should be (sectornum - 1122) / 2
+        let (input, _) = take(4 as usize)(input)?;
         let (input, size) = be_u32(input)?;
         let (input, blocksize) = be_u32(input)?;
         let (input, blockused) = be_u32(input)?;
@@ -225,7 +224,7 @@ impl MFSINode {
         let (input, r#type) = MFSINodeType::parse(input)?;
         let (input, zone) = be_u8(input)?;
         let (input, pad) = be_u16(input)?;
-        let (input, _sig) = be_u32(input)?;
+        let (input, _sig) = tag([0x91, 0x23, 0x1e, 0xbc])(input)?;
         let (input, checksum) = be_u32(input)?;
         let (input, flags) = be_u32(input)?;
         let (input, numblocks) = be_u32(input)?;
@@ -240,7 +239,6 @@ impl MFSINode {
                 bootcycles,
                 bootsecs,
                 inode,
-                unk3,
                 size,
                 blocksize,
                 blockused,
