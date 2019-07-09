@@ -1,5 +1,3 @@
-extern crate positioned_io;
-
 pub mod apple_partition_map;
 
 pub mod media_file_system;
@@ -10,13 +8,13 @@ use apple_partition_map::ApplePartitionMap;
 
 use media_file_system::{MFSINode, MFSVolumeHeader, MFSZoneMap, MFSZoneType};
 
-use positioned_io::ReadAt;
-
 use std::convert::TryInto;
 
 use std::fs::File;
 
 use std::io::prelude::*;
+
+use std::io::SeekFrom;
 
 use std::vec::Vec;
 
@@ -26,14 +24,28 @@ pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
 pub const APM_BLOCK_SIZE: usize = 512;
 
-pub fn get_block_from_drive(file: &File, location: u64) -> Result<Vec<u8>, String> {
+pub fn get_block_from_drive(file: &mut File, location: u64) -> Result<Vec<u8>, String> {
     get_blocks_from_drive(file, location, 1)
 }
 
-pub fn get_blocks_from_drive(file: &File, location: u64, count: usize) -> Result<Vec<u8>, String> {
+pub fn get_blocks_from_drive(
+    file: &mut File,
+    location: u64,
+    count: usize,
+) -> Result<Vec<u8>, String> {
     let mut buffer = vec![0; APM_BLOCK_SIZE * count];
 
-    match file.read_at(location * APM_BLOCK_SIZE as u64, &mut buffer) {
+    match file.seek(SeekFrom::Start(location * APM_BLOCK_SIZE as u64)) {
+        Ok(_) => {}
+        Err(_) => {
+            return Err(format!(
+                "Could not set file cursor to location {}",
+                location
+            ));
+        }
+    };
+
+    match file.read(&mut buffer) {
         Ok(_) => Ok(buffer),
         Err(_) => Err(format!(
             "Could not read block from file at location {}",
@@ -78,7 +90,7 @@ impl TivoDrive {
 
         // The first block on a TiVo drive contain special TiVo magic,
         //  we're not worried about this for reconstructing the partition map.
-        let partition_map_buffer = match get_blocks_from_drive(&file, 1, 64) {
+        let partition_map_buffer = match get_blocks_from_drive(&mut file, 1, 64) {
             Ok(buffer) => correct_byte_order(&buffer, is_byte_swapped),
             Err(_) => {
                 return Err("Could not read block containing partition map".to_string());
@@ -100,7 +112,7 @@ impl TivoDrive {
             .unwrap();
 
         let app_region_block = correct_byte_order(
-            &get_block_from_drive(&file, u64::from(app_region.starting_sector)).unwrap(),
+            &get_block_from_drive(&mut file, u64::from(app_region.starting_sector)).unwrap(),
             is_byte_swapped,
         );
 
@@ -113,7 +125,7 @@ impl TivoDrive {
 
         let first_zonemap_block = correct_byte_order(
             &get_block_from_drive(
-                &file,
+                &mut file,
                 u64::from(app_region.starting_sector + volume_header.next_zonemap_sector),
             )
             .unwrap(),
@@ -135,7 +147,7 @@ impl TivoDrive {
         while next_zone_ptr != 0 {
             let zonemap_bytes = correct_byte_order(
                 &match get_blocks_from_drive(
-                    &file,
+                    &mut file,
                     u64::from(app_region.starting_sector + next_zone_ptr),
                     next_zone_size as usize,
                 ) {
@@ -183,7 +195,7 @@ impl TivoDrive {
                 let disk_sector =
                     u64::from(app_region.starting_sector + inode_zone.first_sector + sector);
                 let block = correct_byte_order(
-                    &get_block_from_drive(&file, disk_sector)
+                    &get_block_from_drive(&mut file, disk_sector)
                         .expect("Could not get block from drive"),
                     is_byte_swapped,
                 );

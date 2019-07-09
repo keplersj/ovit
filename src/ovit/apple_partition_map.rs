@@ -1,10 +1,10 @@
 extern crate nom;
 
 use nom::{
-    bytes::complete::{tag, take},
+    bytes::streaming::{tag, take},
     error::ErrorKind,
     multi::fold_many_m_n,
-    number::complete::be_u32,
+    number::streaming::be_u32,
     Err, IResult,
 };
 

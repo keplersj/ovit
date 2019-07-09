@@ -1,9 +1,9 @@
 extern crate nom;
 
 use nom::{
-    bytes::complete::{tag, take},
+    bytes::streaming::{tag, take},
     error::ErrorKind,
-    number::complete::{be_u16, be_u32, be_u8},
+    number::streaming::{be_u16, be_u32, be_u8},
     Err, IResult,
 };
 
