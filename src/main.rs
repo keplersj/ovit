@@ -61,6 +61,33 @@ fn main() {
             println!("Stream Count: {:#?}", stream_count);
             println!("Dir Count: {:#?}", dir_count);
             println!("Db Count: {:#?}", db_count);
+
+            // let db_test_object = tivo_image
+            //     .inodes
+            //     .iter()
+            //     .find(|inode| inode.r#type == ovit::MFSINodeType::Db)
+            //     .unwrap();
+            // println!("{:#?}", db_test_object);
+
+            // let object_data = ovit::util::correct_byte_order(
+            //     &ovit::get_blocks_from_drive(
+            //         &tivo_image.source_file,
+            //         u64::from(
+            //             tivo_image
+            //                 .zones
+            //                 .get(db_test_object.zone as usize - 1)
+            //                 .unwrap()
+            //                 .first_sector
+            //                 + db_test_object.data_block_sector,
+            //         ),
+            //         // db_test_object.data_block_sector as usize,
+            //         1,
+            //     )
+            //     .unwrap(),
+            //     true,
+            // );
+
+            // println!("{:?}", object_data);
         }
         ("schema", Some(sub_match)) => {
             // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't

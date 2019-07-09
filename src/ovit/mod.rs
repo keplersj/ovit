@@ -1,10 +1,16 @@
+extern crate nom;
 extern crate positioned_io;
 
 mod apple_partition_map;
 
-mod util;
+pub mod util;
 
 use apple_partition_map::{ApplePartitionMap, Partition};
+
+use nom::{
+    bytes::complete::tag, bytes::complete::take, error::ErrorKind, number::complete::be_u16,
+    number::complete::be_u32, number::complete::be_u8, Err, IResult,
+};
 
 use positioned_io::ReadAt;
 
@@ -16,13 +22,11 @@ use std::io::prelude::*;
 
 use std::vec::Vec;
 
-use util::{get_u16_from_bytes_range, get_u32_from_bytes_range, get_string_from_bytes_range, correct_byte_order};
+use util::correct_byte_order;
 
 pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
 pub const APM_BLOCK_SIZE: usize = 512;
-pub const MFS32_HEADER_MAGIC: u32 = 0xABBA_FEED;
-pub const MFS64_HEADER_MAGIC: u32 = 0xEBBA_FEED;
 
 pub fn get_block_from_drive(file: &File, location: u64) -> Result<Vec<u8>, String> {
     get_blocks_from_drive(file, location, 1)
@@ -40,47 +44,73 @@ pub fn get_blocks_from_drive(file: &File, location: u64, count: usize) -> Result
     }
 }
 
-#[derive(Debug)]
+fn string(input: &[u8]) -> IResult<&[u8], String> {
+    let (input, str_bytes) = take(128 as usize)(input)?;
+    match String::from_utf8(str_bytes.to_vec()) {
+        Ok(string) => Ok((input, string.trim_matches(char::from(0)).to_string())),
+        Err(_) => Err(Err::Error((input, ErrorKind::ParseTo))),
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct MFSVolumeHeader {
     pub state: u32,
-    pub magic: String,
     pub checksum: u32,
     pub root_fsid: u32,
     pub firstpartsize: u32,
     pub partitionlist: String,
     pub total_sectors: u32,
-    pub zonemap_ptr: u32,
-    pub backup_zonemap_ptr: u32,
-    pub zonemap_size: u32,
+    pub next_zonemap_sector: u32,
+    pub next_zonemap_backup_sector: u32,
+    pub next_zonemap_partition_size: u32,
     pub next_fsid: u32,
 }
 
 impl MFSVolumeHeader {
-    pub fn from_bytes(block: &[u8]) -> MFSVolumeHeader {
-        MFSVolumeHeader {
-            state: get_u32_from_bytes_range(block, 0..=3).expect("Could not get state"),
-            magic: format!(
-                "{:X}",
-                get_u32_from_bytes_range(block, 4..=7).expect("Could not get magic")
-            ),
-            checksum: get_u32_from_bytes_range(block, 8..=11).expect("Could not get checksum"),
-            root_fsid: get_u32_from_bytes_range(block, 16..=19).expect("Could not get root fsid"),
-            firstpartsize: get_u32_from_bytes_range(block, 20..=23)
-                .expect("Could not get first partition size"),
-            partitionlist: get_string_from_bytes_range(block, 36..=163)
-                .expect("Could not get device list from bytes")
-                .trim_matches(char::from(0))
-                .to_string(),
-            total_sectors: get_u32_from_bytes_range(block, 164..=167)
-                .expect("Could not get total sectors"),
-            zonemap_ptr: get_u32_from_bytes_range(block, 196..=199)
-                .expect("Could not get zonemap pointer"),
-            backup_zonemap_ptr: get_u32_from_bytes_range(block, 200..=203)
-                .expect("Could not get backup zonemap pointer"),
-            zonemap_size: get_u32_from_bytes_range(block, 204..=207)
-                .expect("Could not get zonemap size"),
-            next_fsid: get_u32_from_bytes_range(block, 216..=219).expect("Could not get next fsid"),
-        }
+    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSVolumeHeader> {
+        let (input, state) = be_u32(input)?;
+        let (input, _) = tag([0xAB, 0xBA, 0xFE, 0xED])(input)?;
+        let (input, checksum) = be_u32(input)?;
+        let (input, _) = take(4 as usize)(input)?;
+        let (input, root_fsid) = be_u32(input)?;
+        let (input, _) = take(4 as usize)(input)?;
+        let (input, firstpartsize) = be_u32(input)?;
+        let (input, _) = take(4 as usize)(input)?;
+        let (input, _) = take(4 as usize)(input)?;
+        let (input, partitionlist) = string(input)?;
+        let (input, total_sectors) = be_u32(input)?;
+        let (input, _) = take(4 as usize)(input)?;
+        let (input, _logstart) = be_u32(input)?;
+        let (input, _lognsectors) = be_u32(input)?;
+        let (input, _volhdrlogstamp) = be_u32(input)?;
+        let (input, _unkstart) = be_u32(input)?;
+        let (input, _unksectors) = be_u32(input)?;
+        let (input, _unkstamp) = be_u32(input)?;
+        let (input, next_zonemap_sector) = be_u32(input)?;
+        let (input, next_zonemap_backup_sector) = be_u32(input)?;
+        let (input, _next_zonemap_sector_length) = be_u32(input)?;
+        let (input, next_zonemap_partition_size) = be_u32(input)?;
+        let (input, _next_zonemap_min_allocation) = be_u32(input)?;
+        let (input, next_fsid) = be_u32(input)?;
+        let (input, _bootcycles) = be_u32(input)?;
+        let (input, _bootsecs) = be_u32(input)?;
+        let (input, _) = take(4 as usize)(input)?;
+
+        Ok((
+            input,
+            MFSVolumeHeader {
+                state,
+                checksum,
+                root_fsid,
+                firstpartsize,
+                partitionlist,
+                total_sectors,
+                next_zonemap_sector,
+                next_zonemap_backup_sector,
+                next_zonemap_partition_size,
+                next_fsid,
+            },
+        ))
     }
 }
 
@@ -94,18 +124,19 @@ pub enum MFSZoneType {
 }
 
 impl MFSZoneType {
-    pub fn from_u32(n: u32) -> MFSZoneType {
+    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSZoneType> {
+        let (input, n) = be_u32(input)?;
         match n {
-            0 => MFSZoneType::INode,
-            1 => MFSZoneType::Application,
-            2 => MFSZoneType::Media,
-            3 => MFSZoneType::Max,
-            _ => MFSZoneType::Unknown(n),
+            0 => Ok((input, MFSZoneType::INode)),
+            1 => Ok((input, MFSZoneType::Application)),
+            2 => Ok((input, MFSZoneType::Media)),
+            3 => Ok((input, MFSZoneType::Max)),
+            _ => Ok((input, MFSZoneType::Unknown(n))),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct MFSZoneMap {
     pub sector: u32,
     pub backup_sector: u32,
@@ -127,39 +158,48 @@ pub struct MFSZoneMap {
 }
 
 impl MFSZoneMap {
-    pub fn from_bytes(block: &[u8]) -> MFSZoneMap {
-        MFSZoneMap {
-            sector: get_u32_from_bytes_range(block, 0..=3).expect("Could not get sector"),
-            backup_sector: get_u32_from_bytes_range(block, 4..=7)
-                .expect("Could not get backup sector"),
-            zonemap_size: get_u32_from_bytes_range(block, 8..=11)
-                .expect("Could not get zonemap size"),
-            next_zonemap_ptr: get_u32_from_bytes_range(block, 12..=15)
-                .expect("Could not get next zonemap pointer"),
-            backup_next_zonemap_ptr: get_u32_from_bytes_range(block, 16..=19)
-                .expect("Could not get backup new zonemap pointer"),
-            next_zonemap_size: get_u32_from_bytes_range(block, 20..=23)
-                .expect("Could not get next zonemap size"),
-            next_zonemap_partition_size: get_u32_from_bytes_range(block, 24..=27)
-                .expect("Could not get next zonemap partition size"),
-            next_zonemap_min_allocation: get_u32_from_bytes_range(block, 28..=31)
-                .expect("Could not get next zonemap minimum allocation"),
-            r#type: MFSZoneType::from_u32(
-                get_u32_from_bytes_range(block, 32..=35).expect("Could not get type"),
-            ),
-            logstamp: get_u32_from_bytes_range(block, 36..=39).expect("Could not get logstamp"),
-            checksum: get_u32_from_bytes_range(block, 40..=43).expect("Could not get checksum"),
-            first_sector: get_u32_from_bytes_range(block, 44..=47)
-                .expect("Could not get first sector"),
-            last_sector: get_u32_from_bytes_range(block, 48..=51)
-                .expect("Could not get last sector"),
-            size: get_u32_from_bytes_range(block, 52..=55).expect("Could not get size"),
-            min_allocations: get_u32_from_bytes_range(block, 56..=59)
-                .expect("Could not get minimum allocations"),
-            free_space: get_u32_from_bytes_range(block, 60..=63).expect("Could not get free space"),
-            bitmap_num: get_u32_from_bytes_range(block, 68..=71)
-                .expect("Could not get bitmap number"),
-        }
+    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSZoneMap> {
+        let (input, sector) = be_u32(input)?;
+        let (input, backup_sector) = be_u32(input)?;
+        let (input, zonemap_size) = be_u32(input)?;
+        let (input, next_zonemap_ptr) = be_u32(input)?;
+        let (input, backup_next_zonemap_ptr) = be_u32(input)?;
+        let (input, next_zonemap_size) = be_u32(input)?;
+        let (input, next_zonemap_partition_size) = be_u32(input)?;
+        let (input, next_zonemap_min_allocation) = be_u32(input)?;
+        let (input, r#type) = MFSZoneType::parse(input)?;
+        let (input, logstamp) = be_u32(input)?;
+        let (input, checksum) = be_u32(input)?;
+        let (input, first_sector) = be_u32(input)?;
+        let (input, last_sector) = be_u32(input)?;
+        let (input, size) = be_u32(input)?;
+        let (input, min_allocations) = be_u32(input)?;
+        let (input, free_space) = be_u32(input)?;
+        let (input, _) = take(4 as usize)(input)?;
+        let (input, bitmap_num) = be_u32(input)?;
+
+        Ok((
+            input,
+            MFSZoneMap {
+                sector,
+                backup_sector,
+                zonemap_size,
+                next_zonemap_ptr,
+                backup_next_zonemap_ptr,
+                next_zonemap_size,
+                next_zonemap_partition_size,
+                next_zonemap_min_allocation,
+                r#type,
+                logstamp,
+                checksum,
+                first_sector,
+                last_sector,
+                size,
+                min_allocations,
+                free_space,
+                bitmap_num,
+            },
+        ))
     }
 }
 
@@ -174,87 +214,19 @@ pub enum MFSINodeType {
 }
 
 impl MFSINodeType {
-    pub fn from_u8(n: u8) -> MFSINodeType {
+    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSINodeType> {
+        let (input, n) = be_u8(input)?;
         match n {
-            0 => MFSINodeType::Node,
-            1 => MFSINodeType::File,
-            2 => MFSINodeType::Stream,
-            4 => MFSINodeType::Dir,
-            8 => MFSINodeType::Db,
-            _ => MFSINodeType::Unknown(n),
+            0 => Ok((input, MFSINodeType::Node)),
+            1 => Ok((input, MFSINodeType::File)),
+            2 => Ok((input, MFSINodeType::Stream)),
+            4 => Ok((input, MFSINodeType::Dir)),
+            8 => Ok((input, MFSINodeType::Db)),
+            _ => Ok((input, MFSINodeType::Unknown(n))),
         }
     }
 }
 
-/*
-INode struct from mfs-utils:
-struct mfs_inode {
-    u32 id;
-    u32 typexx;
-    u32 fill1[3];
-    u32 units;
-    u32 size;
-    u32 used_units;
-    u32 used_size;
-    /* XXX fill2 used to be fill2[3]. used_* came out of elements
-     * 0 and 1
-     */
-    u32 fill2;
-    u8  type;
-    u8  fill3;
-    u16 fill4;
-    u32 fill5;
-    u32 crc;
-    u32 flags;
-    u32 num_runs;
-    union {
-        // cwingert - There are possible more than 24 runs, just fill up
-        // the data space
-        // struct mfs_run runs[24];
-        struct mfs_run runs[56];
-        char data[452];
-    } u;
-};
-*/
-
-/*
-INode struct from mfstools:
-typedef struct mfs_inode_s
-{
-    unsigned int fsid;			/* This FSID */
-    unsigned int refcount;		/* References to this FSID */
-    unsigned int bootcycles;	/* Number of boot cycles as of modification */
-    unsigned int bootsecs;		/* Seconds since boot of modification */
-    unsigned int inode;			/* Should be (sectornum - 1122) / 2 */
-    unsigned int unk3;			/* Also block size? */
-    unsigned int size;			/* In bytes or blocksize sized blocks */
-    unsigned int blocksize;
-    unsigned int blockused;
-    unsigned int lastmodified;	/* In seconds since epoch */
-    fsid_type type;				/* For files not referenced by filesystem */
-    unsigned char zone;
-    unsigned short pad;		/* Unused space, underlying 0xdeadbeef shows */
-    unsigned int sig;			/* Seems to be 0x91231ebc */
-    unsigned int checksum;
-    unsigned int inode_flags;	/* It seems to be flags at least. */
-    unsigned int numblocks;		/* Number of data blocks. */
-    union
-    {
-        struct
-        {
-            unsigned int sector;
-            unsigned int count;
-        }
-        d32[0];
-        struct
-        {
-            uint64_t sector;
-            uint32_t count;
-        }
-        d64[0];
-    } datablocks;
-}
-*/
 #[derive(Debug)]
 pub struct MFSINode {
     pub fsid: u32,
@@ -270,54 +242,64 @@ pub struct MFSINode {
     pub r#type: MFSINodeType,
     pub zone: u8,
     pub pad: u16,
-    pub sig: String,
     pub checksum: u32,
-    pub flags: String,
+    pub flags: u32,
     pub numblocks: u32,
     pub data_block_sector: u32,
     pub data_block_count: u32,
 }
 
 impl MFSINode {
-    pub fn from_bytes(block: &[u8]) -> MFSINode {
-        MFSINode {
-            fsid: get_u32_from_bytes_range(block, 0..=3).expect("Could not get id"),
-            refcount: get_u32_from_bytes_range(block, 4..=7).expect("Could not get refcount"),
-            bootcycles: get_u32_from_bytes_range(block, 8..=11).expect("Could not get bootcycles"),
-            bootsecs: get_u32_from_bytes_range(block, 12..=15).expect("Could not get bootsecs"),
-            inode: get_u32_from_bytes_range(block, 16..=19).expect("Could not get inode"),
-            unk3: get_u32_from_bytes_range(block, 20..=23).expect("Could not get unknown"),
-            size: get_u32_from_bytes_range(block, 24..=27).expect("Could not get size"),
-            blocksize: get_u32_from_bytes_range(block, 28..=31)
-                .expect("Could not get used block size"),
-            blockused: get_u32_from_bytes_range(block, 32..=35)
-                .expect("Could not get used block used"),
-            last_modified: get_u32_from_bytes_range(block, 36..=39)
-                .expect("Could not get last modified"),
-            r#type: MFSINodeType::from_u8(*block.get(40).expect("Could not get type")),
-            zone: *block.get(41).expect("Could not get zone"),
-            pad: get_u16_from_bytes_range(block, 42..=43).expect("Could not get pad"),
-            sig: format!(
-                "{:#X}",
-                get_u32_from_bytes_range(block, 44..=47).expect("Could not get sig")
-            ),
-            checksum: get_u32_from_bytes_range(block, 48..=51).expect("Could not get checksum"),
-            flags: format!(
-                "{:#X}",
-                get_u32_from_bytes_range(block, 52..=55).expect("Could not get flags")
-            ),
-            numblocks: get_u32_from_bytes_range(block, 56..=59)
-                .expect("Could not get number of blocks"),
-            data_block_sector: get_u32_from_bytes_range(block, 60..=63)
-                .expect("Could not get sector of datablocks"),
-            data_block_count: get_u32_from_bytes_range(block, 64..=67)
-                .expect("Could not get number of datablocks"),
-        }
+    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSINode> {
+        let (input, fsid) = be_u32(input)?;
+        let (input, refcount) = be_u32(input)?;
+        let (input, bootcycles) = be_u32(input)?;
+        let (input, bootsecs) = be_u32(input)?;
+        let (input, inode) = be_u32(input)?;
+        let (input, unk3) = be_u32(input)?;
+        let (input, size) = be_u32(input)?;
+        let (input, blocksize) = be_u32(input)?;
+        let (input, blockused) = be_u32(input)?;
+        let (input, last_modified) = be_u32(input)?;
+        let (input, r#type) = MFSINodeType::parse(input)?;
+        let (input, zone) = be_u8(input)?;
+        let (input, pad) = be_u16(input)?;
+        let (input, _sig) = be_u32(input)?;
+        let (input, checksum) = be_u32(input)?;
+        let (input, flags) = be_u32(input)?;
+        let (input, numblocks) = be_u32(input)?;
+        let (input, data_block_sector) = be_u32(input)?;
+        let (input, data_block_count) = be_u32(input)?;
+
+        Ok((
+            input,
+            MFSINode {
+                fsid,
+                refcount,
+                bootcycles,
+                bootsecs,
+                inode,
+                unk3,
+                size,
+                blocksize,
+                blockused,
+                last_modified,
+                r#type,
+                zone,
+                pad,
+                checksum,
+                flags,
+                numblocks,
+                data_block_sector,
+                data_block_count,
+            },
+        ))
     }
 }
 
 #[derive(Debug)]
 pub struct TivoDrive {
+    pub source_file: File,
     pub partition_map: ApplePartitionMap,
     pub volume_header: MFSVolumeHeader,
     pub zones: Vec<MFSZoneMap>,
@@ -325,11 +307,11 @@ pub struct TivoDrive {
 }
 
 impl TivoDrive {
-    pub fn from_disk_image(path: &str) -> Result<TivoDrive, &'static str> {
+    pub fn from_disk_image(path: &str) -> Result<TivoDrive, String> {
         let mut file = match File::open(path) {
             Ok(file) => file,
             Err(_) => {
-                return Err("Couldn't open image");
+                return Err("Couldn't open image".to_string());
             }
         };
 
@@ -337,7 +319,7 @@ impl TivoDrive {
         match file.read_exact(&mut buffer) {
             Ok(_) => {}
             Err(_) => {
-                return Err("Could not read first two bytes from file");
+                return Err("Could not read first two bytes from file".to_string());
             }
         };
 
@@ -345,7 +327,7 @@ impl TivoDrive {
             TIVO_BOOT_MAGIC => false,
             TIVO_BOOT_AMIGC => true,
             _ => {
-                return Err("Not a TiVo Drive");
+                return Err("Not a TiVo Drive".to_string());
             }
         };
 
@@ -355,11 +337,11 @@ impl TivoDrive {
         let driver_descriptor_buffer = match get_block_from_drive(&file, 1) {
             Ok(buffer) => correct_byte_order(&buffer, is_byte_swapped),
             Err(_) => {
-                return Err("Could not read block containing partition map");
+                return Err("Could not read block containing partition map".to_string());
             }
         };
 
-        let driver_descriptor_map = Partition::new(driver_descriptor_buffer)
+        let (_, driver_descriptor_map) = Partition::parse(&driver_descriptor_buffer)
             .expect("Could not reconstruct Driver Descriptor Map");
 
         let mut partitions = vec![driver_descriptor_map];
@@ -368,16 +350,16 @@ impl TivoDrive {
             let partition_buffer = match get_block_from_drive(&file, u64::from(offset)) {
                 Ok(buffer) => correct_byte_order(&buffer, is_byte_swapped),
                 Err(_) => {
-                    return Err("Could not read block containing partition map");
+                    return Err("Could not read block containing partition map".to_string());
                 }
             };
 
-            match Partition::new(partition_buffer) {
-                Ok(partition) => {
+            match Partition::parse(&partition_buffer) {
+                Ok((_, partition)) => {
                     partitions.push(partition);
                 }
                 Err(err) => {
-                    return Err(err);
+                    return Err(format!("Error parsing partition: {:?}", err));
                 }
             }
         }
@@ -395,18 +377,28 @@ impl TivoDrive {
             is_byte_swapped,
         );
 
-        let volume_header = MFSVolumeHeader::from_bytes(&app_region_block);
+        let volume_header = match MFSVolumeHeader::parse(&app_region_block) {
+            Ok((_, header)) => header,
+            Err(err) => {
+                return Err(format!("Could not parse volume header: {:X?}", err));
+            }
+        };
 
         let first_zonemap_block = correct_byte_order(
             &get_block_from_drive(
                 &file,
-                u64::from(app_region.starting_sector + volume_header.zonemap_ptr),
+                u64::from(app_region.starting_sector + volume_header.next_zonemap_sector),
             )
             .unwrap(),
             is_byte_swapped,
         );
 
-        let first_zonemap = MFSZoneMap::from_bytes(&first_zonemap_block);
+        let first_zonemap = match MFSZoneMap::parse(&first_zonemap_block) {
+            Ok((_, zonemap)) => zonemap,
+            Err(err) => {
+                return Err(format!("Could not parse zonemap: {:?}", err));
+            }
+        };
 
         let mut zones = vec![first_zonemap];
 
@@ -433,7 +425,12 @@ impl TivoDrive {
                 is_byte_swapped,
             );
 
-            let zonemap = MFSZoneMap::from_bytes(&zonemap_bytes);
+            let zonemap = match MFSZoneMap::parse(&zonemap_bytes) {
+                Ok((_, zonemap)) => zonemap,
+                Err(err) => {
+                    return Err(format!("Could not parse zonemap: {:?}", err));
+                }
+            };
 
             next_zone_ptr = zonemap.next_zonemap_ptr;
             next_zone_size = zonemap.next_zonemap_size;
@@ -458,7 +455,12 @@ impl TivoDrive {
                         .expect("Could not get block from drive"),
                     is_byte_swapped,
                 );
-                let inode = MFSINode::from_bytes(&block);
+                let inode = match MFSINode::parse(&block) {
+                    Ok((_, inode)) => inode,
+                    Err(err) => {
+                        return Err(format!("Could not parse inode: {:?}", err));
+                    }
+                };
 
                 if inode.fsid != 0 {
                     inodes.push(inode);
@@ -467,6 +469,7 @@ impl TivoDrive {
         }
 
         Ok(TivoDrive {
+            source_file: file,
             partition_map,
             volume_header,
             zones,
