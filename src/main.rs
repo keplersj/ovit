@@ -33,27 +33,27 @@ fn main() {
             let node_count = tivo_image
                 .inodes
                 .iter()
-                .filter(|inode| inode.r#type == ovit::MFSINodeType::Node)
+                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Node)
                 .count();
             let file_count = tivo_image
                 .inodes
                 .iter()
-                .filter(|inode| inode.r#type == ovit::MFSINodeType::File)
+                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::File)
                 .count();
             let stream_count = tivo_image
                 .inodes
                 .iter()
-                .filter(|inode| inode.r#type == ovit::MFSINodeType::Stream)
+                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Stream)
                 .count();
             let dir_count = tivo_image
                 .inodes
                 .iter()
-                .filter(|inode| inode.r#type == ovit::MFSINodeType::Dir)
+                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Dir)
                 .count();
             let db_count = tivo_image
                 .inodes
                 .iter()
-                .filter(|inode| inode.r#type == ovit::MFSINodeType::Db)
+                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Db)
                 .count();
 
             println!("Node Count: {:#?}", node_count);
