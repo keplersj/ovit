@@ -6,7 +6,7 @@ pub mod media_file_system;
 
 pub mod util;
 
-use apple_partition_map::{ApplePartitionMap, Partition};
+use apple_partition_map::ApplePartitionMap;
 
 use media_file_system::{MFSINode, MFSVolumeHeader, MFSZoneMap, MFSZoneType};
 
@@ -78,38 +78,20 @@ impl TivoDrive {
 
         // The first block on a TiVo drive contain special TiVo magic,
         //  we're not worried about this for reconstructing the partition map.
-        //  The partition entry describing the partition map should be in the second block (offet: 512)
-        let driver_descriptor_buffer = match get_block_from_drive(&file, 1) {
+        let partition_map_buffer = match get_blocks_from_drive(&file, 1, 64) {
             Ok(buffer) => correct_byte_order(&buffer, is_byte_swapped),
             Err(_) => {
                 return Err("Could not read block containing partition map".to_string());
             }
         };
 
-        let (_, driver_descriptor_map) = Partition::parse(&driver_descriptor_buffer)
-            .expect("Could not reconstruct Driver Descriptor Map");
-
-        let mut partitions = vec![driver_descriptor_map];
-
-        for offset in 2..=partitions.get(0).unwrap().partitions_total {
-            let partition_buffer = match get_block_from_drive(&file, u64::from(offset)) {
-                Ok(buffer) => correct_byte_order(&buffer, is_byte_swapped),
-                Err(_) => {
-                    return Err("Could not read block containing partition map".to_string());
+        let partition_map =
+            match ApplePartitionMap::parse_from_driver_descriptor_map(&partition_map_buffer) {
+                Ok((_, partition_map)) => partition_map,
+                Err(err) => {
+                    return Err(format!("Could not parse partition map: {:?}", err));
                 }
             };
-
-            match Partition::parse(&partition_buffer) {
-                Ok((_, partition)) => {
-                    partitions.push(partition);
-                }
-                Err(err) => {
-                    return Err(format!("Error parsing partition: {:?}", err));
-                }
-            }
-        }
-
-        let partition_map = ApplePartitionMap { partitions };
 
         let app_region = partition_map
             .partitions
