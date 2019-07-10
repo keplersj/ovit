@@ -1,5 +1,7 @@
+extern crate chrono;
 extern crate nom;
 
+use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,
@@ -198,7 +200,7 @@ pub struct MFSINode {
     pub size: u32,
     pub blocksize: u32,
     pub blockused: u32,
-    pub last_modified: u32,
+    pub last_modified: DateTime<Utc>,
     pub r#type: MFSINodeType,
     pub zone: u8,
     pub pad: u16,
@@ -207,6 +209,7 @@ pub struct MFSINode {
     pub numblocks: u32,
     pub data_block_sector: u32,
     pub data_block_count: u32,
+    // pub data: Vec<u8>,
 }
 
 impl MFSINode {
@@ -230,6 +233,7 @@ impl MFSINode {
         let (input, numblocks) = be_u32(input)?;
         let (input, data_block_sector) = be_u32(input)?;
         let (input, data_block_count) = be_u32(input)?;
+        // let (input, data) = take(444 as usize)(input)?;
 
         Ok((
             input,
@@ -242,7 +246,7 @@ impl MFSINode {
                 size,
                 blocksize,
                 blockused,
-                last_modified,
+                last_modified: Utc.timestamp(i64::from(last_modified), 0),
                 r#type,
                 zone,
                 pad,
@@ -251,6 +255,7 @@ impl MFSINode {
                 numblocks,
                 data_block_sector,
                 data_block_count,
+                // data: data.to_vec(),
             },
         ))
     }
