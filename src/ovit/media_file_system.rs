@@ -79,7 +79,7 @@ impl MFSVolumeHeader {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum MFSZoneType {
     INode = 0,
     Application = 1,
@@ -167,7 +167,7 @@ impl MFSZoneMap {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum MFSINodeType {
     Node = 0,
     File = 1,
@@ -203,14 +203,15 @@ pub struct MFSINode {
     pub last_modified: DateTime<Utc>,
     pub r#type: MFSINodeType,
     pub zone: u8,
-    pub pad: u16,
     pub checksum: u32,
     pub flags: u32,
+    pub data: Vec<u8>,
     pub numblocks: u32,
     pub data_block_sector: u32,
     pub data_block_count: u32,
-    // pub data: Vec<u8>,
 }
+
+const INODE_DATA_IN_HEADER: u32 = 0x4000_0000;
 
 impl MFSINode {
     pub fn parse(input: &[u8]) -> IResult<&[u8], MFSINode> {
@@ -226,14 +227,32 @@ impl MFSINode {
         let (input, last_modified) = be_u32(input)?;
         let (input, r#type) = MFSINodeType::parse(input)?;
         let (input, zone) = be_u8(input)?;
-        let (input, pad) = be_u16(input)?;
+        let (input, _pad) = be_u16(input)?;
         let (input, _sig) = tag([0x91, 0x23, 0x1e, 0xbc])(input)?;
         let (input, checksum) = be_u32(input)?;
         let (input, flags) = be_u32(input)?;
-        let (input, numblocks) = be_u32(input)?;
-        let (input, data_block_sector) = be_u32(input)?;
-        let (input, data_block_count) = be_u32(input)?;
-        // let (input, data) = take(444 as usize)(input)?;
+        let (input, data) = if flags == INODE_DATA_IN_HEADER {
+            let data = input.to_vec();
+            let input: &[u8] = &[];
+            (input, data)
+        } else {
+            (input, vec![])
+        };
+        let (input, numblocks) = if flags == INODE_DATA_IN_HEADER {
+            (input, 0)
+        } else {
+            be_u32(input)?
+        };
+        let (input, data_block_sector) = if flags == INODE_DATA_IN_HEADER {
+            (input, 0)
+        } else {
+            be_u32(input)?
+        };
+        let (input, data_block_count) = if flags == INODE_DATA_IN_HEADER {
+            (input, 0)
+        } else {
+            be_u32(input)?
+        };
 
         Ok((
             input,
@@ -249,13 +268,12 @@ impl MFSINode {
                 last_modified: Utc.timestamp(i64::from(last_modified), 0),
                 r#type,
                 zone,
-                pad,
                 checksum,
                 flags,
+                data,
                 numblocks,
                 data_block_sector,
                 data_block_count,
-                // data: data.to_vec(),
             },
         ))
     }

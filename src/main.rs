@@ -1,11 +1,7 @@
 mod ovit;
-
 extern crate clap;
-
 use clap::{App, Arg, SubCommand};
-
 use std::collections::HashMap;
-
 use std::fs;
 
 fn main() {
@@ -27,67 +23,19 @@ fn main() {
             // required we could have used an 'if let' to conditionally get the value)
             let input_path = sub_match.value_of("INPUT").unwrap();
 
+            println!("Parsing TiVo Drive. Please wait");
+
             let tivo_image = ovit::TivoDrive::from_disk_image(input_path)
                 .expect("Could not open TiVo Drive Image");
+            println!("TiVo Drive Parsed!");
 
-            let node_count = tivo_image
+            let data_in_header_dir_inodes: Vec<&ovit::media_file_system::MFSINode> = tivo_image
                 .inodes
                 .iter()
-                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Node)
-                .count();
-            let file_count = tivo_image
-                .inodes
-                .iter()
-                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::File)
-                .count();
-            let stream_count = tivo_image
-                .inodes
-                .iter()
-                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Stream)
-                .count();
-            let dir_count = tivo_image
-                .inodes
-                .iter()
+                .filter(|inode| inode.flags == 0x4000_0000)
                 .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Dir)
-                .count();
-            let db_count = tivo_image
-                .inodes
-                .iter()
-                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Db)
-                .count();
-
-            println!("Node Count: {:#?}", node_count);
-            println!("File Count: {:#?}", file_count);
-            println!("Stream Count: {:#?}", stream_count);
-            println!("Dir Count: {:#?}", dir_count);
-            println!("Db Count: {:#?}", db_count);
-
-            // let db_test_object = tivo_image
-            //     .inodes
-            //     .iter()
-            //     .find(|inode| inode.r#type == ovit::MFSINodeType::Db)
-            //     .unwrap();
-            // println!("{:#?}", db_test_object);
-
-            // let object_data = ovit::util::correct_byte_order(
-            //     &ovit::get_blocks_from_drive(
-            //         &tivo_image.source_file,
-            //         u64::from(
-            //             tivo_image
-            //                 .zones
-            //                 .get(db_test_object.zone as usize - 1)
-            //                 .unwrap()
-            //                 .first_sector
-            //                 + db_test_object.data_block_sector,
-            //         ),
-            //         // db_test_object.data_block_sector as usize,
-            //         1,
-            //     )
-            //     .unwrap(),
-            //     true,
-            // );
-
-            // println!("{:?}", object_data);
+                .collect();
+            println!("{:#X?}", data_in_header_dir_inodes);
         }
         ("schema", Some(sub_match)) => {
             // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
