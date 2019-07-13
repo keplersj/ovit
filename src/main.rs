@@ -1,8 +1,55 @@
 mod ovit;
 extern crate clap;
 use clap::{App, Arg, SubCommand};
-use std::collections::HashMap;
-use std::fs;
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::{alphanumeric1, digit1, line_ending, space1},
+    multi::many0,
+    IResult,
+};
+
+#[derive(Debug)]
+struct SchemaAttribute {
+    root_type_id: u8,
+    root_type_name: String,
+    attribute_id: u8,
+    attribute_name: String,
+    r#type: String,
+    required: String,
+}
+
+fn parse_schema_row(input: &str) -> IResult<&str, SchemaAttribute> {
+    let (input, root_type_id) = digit1(input)?;
+    let (input, _) = space1(input)?;
+    let (input, root_type_name) = alphanumeric1(input)?;
+    let (input, _) = space1(input)?;
+    let (input, attribute_id) = digit1(input)?;
+    let (input, _) = space1(input)?;
+    let (input, attribute_name) = alt((tag("WasUpgradedFrom1_3"), alphanumeric1))(input)?;
+    let (input, _) = space1(input)?;
+    let (input, r#type) = alphanumeric1(input)?;
+    let (input, _) = space1(input)?;
+    let (input, required) = alphanumeric1(input)?;
+    let (input, _) = space1(input)?;
+    let (input, _) = alt((tag("{}"), alphanumeric1))(input)?;
+    let (input, _) = space1(input)?;
+    let (input, _) = alphanumeric1(input)?;
+    let (input, _) = line_ending(input)?;
+    Ok((
+        input,
+        SchemaAttribute {
+            root_type_id: u8::from_str_radix(root_type_id, 10)
+                .expect("Couldn't convert root type id"),
+            root_type_name: root_type_name.to_string(),
+            attribute_id: u8::from_str_radix(attribute_id, 10)
+                .expect("Couldn't convert attribute id"),
+            attribute_name: attribute_name.to_string(),
+            r#type: r#type.to_string(),
+            required: required.to_string(),
+        },
+    ))
+}
 
 fn main() {
     let matches = App::new("oViT")
@@ -12,9 +59,7 @@ fn main() {
         .subcommand(SubCommand::with_name("info").arg(Arg::with_name("INPUT")
             .help("The drive image to read from")
             .required(true)))
-        .subcommand(SubCommand::with_name("schema").arg(Arg::with_name("INPUT")
-            .help("Schema file")
-            .required(true)))
+        .subcommand(SubCommand::with_name("schema"))
         .get_matches();
 
     match matches.subcommand() {
@@ -37,31 +82,11 @@ fn main() {
                 .collect();
             println!("{:#X?}", data_in_header_dir_inodes);
         }
-        ("schema", Some(sub_match)) => {
-            // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
-            // required we could have used an 'if let' to conditionally get the value)
-            let input_path = sub_match.value_of("INPUT").unwrap();
-
-            let schema_contents = String::from_utf8(fs::read(input_path).unwrap()).unwrap();
-            let mut schema = HashMap::new();
-
-            for line in schema_contents.split('\n') {
-                let columns: Vec<&str> = line.split(' ').collect();
-                if columns.len() == 8 {
-                    let root = columns[1];
-                    let attr = columns[3];
-
-                    if !schema.contains_key(root) {
-                        schema.insert(root, vec![(attr, columns[4..=7].to_vec())]);
-                    } else {
-                        let mut array = schema.get(root).unwrap().to_vec();
-                        array.push((attr, columns[4..=7].to_vec()));
-                        schema.insert(root, array);
-                    }
-                }
-            }
-
-            println!("{:#?}", schema);
+        ("schema", Some(_sub_matches)) => {
+            let schema_contents = include_str!("schema.txt");
+            let (_, parsed_schema) =
+                many0(parse_schema_row)(schema_contents).expect("Could not parse schema");
+            println!("{:#?}", parsed_schema);
         }
         _ => {}
     }
