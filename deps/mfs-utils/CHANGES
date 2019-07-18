@@ -1,0 +1,224 @@
+-----------------------------------------------------------------------------
+20050604
+
+Jamie
+	Fix device handling for OS_X:  use DKIOGETBLOCKCOUNT32 to get the
+	device sizes.  Handle bsd style disk device names (/dev/diskNsM...).
+
+-----------------------------------------------------------------------------
+
+20050515
+
+Jamie
+	Allow a recursive mfs_dumpobj to continue after running into 
+	invalid fsid references.
+
+-----------------------------------------------------------------------------
+
+20050512
+
+Jamie
+	Move to sourceforge; rename to mfs-utils.
+
+-----------------------------------------------------------------------------
+20050507
+
+Jamie
+
+	Added a mfs_burstcmds command line program that does the equivalent of
+	JB6783's php code.  Extended the vserver protocol slightly to
+	allow mfs_burstcmds to work through a vserver connection.
+
+	Include CYGWIN compiled binaries.  These are NOT intended to be
+	used with a directly attached disk.  There are well know issues
+	with attaching a tivo drive to a windows 2K or XP machine (the
+	boot blocks of the disk get clobberd.  Instead, use these
+	tools with a remote vserver:
+
+	On the tivo, run vserver, either directly or through inetd.
+
+	On a PC running a cygwin shell:
+
+	# Set the ip address of the tivo
+	export MFS_DEVLIST=":your-tivo-ip"
+
+	Then use mfs_uberexport, mfs_burstcmds, or other commands as though
+	the tivo drive was directly attached to your PC.
+	
+-----------------------------------------------------------------------------
+20050501
+
+JB6783
+	Add support for LIST_SECTORS tserver command: used with
+	contrib/burst/tserver.php to extract partition and sector info
+	for Series1 CacheCard burst mode transfers.
+
+-----------------------------------------------------------------------------
+20050429
+
+maxwells_daemon
+	New tserver/vserver -l and -L options.
+	-l sends error messages to the syslog. -L sends all messages.
+	So we don't have to rewrite everything, log.h redefines fprintf etc
+	to call syslog() if use_syslog is set - otherwise it runs fprintf as if
+	log.h weren't there.
+
+	New tserver/vserver -i option. This allows these programs to be started
+	on demand from inetd. stderr and stdout are written to /dev/null, so
+	it's probably best to use -l (or -L) too. inetd is available as part of
+	GNU InetUtils. A PPC port is available from here
+		http://homepage.ntlworld.com/maxwells.daemon/tivo/ports.html
+
+	Fix load_devs which generated an unterminated device name, so could
+	randomly crash.
+
+	Fix error message in generate_1_NowShowing, which probably would have
+	crashed.
+
+	Add usage message for vserver -h. Update usage message for tserver -h.
+-----------------------------------------------------------------------------
+20050419
+
+Jamie
+	Fix tzoffset bug that caused problems with tserver on UK tivo's.
+
+	Fix get_tivo_version() so it doesn't exit if the version is
+	unavailable for some reason.  This allows mfs_uberexport to
+	work even if /SwSystem/ACTIVE isn't present.
+-----------------------------------------------------------------------------
+	20050326
+
+Jamie
+	Merge CHANGES into a single file.
+
+	Fix the broken -f (fix crc) option to mfs_info.
+
+	Add -s (scan) options to mfs_info that can scan for the highest
+	tyStream FSID and size needed for a backup to preserve
+	loopsets.  This could be useful for determining
+	a reasonable -f or -l value for mfsbackup.
+
+	Fix a bug in mfs_uberexport that prevented small files from
+	being exported.
+-----------------------------------------------------------------------------
+20050316
+
+Jamie
+	Fix memory leak in generate_NowShowing.c;  Fix caching problem in parse.c
+	Thanks to jimthev for pointing out the memory leak.2
+-----------------------------------------------------------------------------
+20050314
+
+Daniel Gimpelevich (aka sn9)
+	OS X Port
+
+Jamie
+	C version of AlphaWolf's ciphercheck.tcl
+
+DarkHelmet
+	Contributed program to aid in-place unscrambling on S1 hardware.
+
+Jamie	Add an option (-f) to mfs_info to "fix" a broken superblock CRC.
+	
+Jamie	Use the schema from 7.1a-02.
+
+Jamie	Fix mkpkg.sh so that file types match compression used.
+-----------------------------------------------------------------------------
+20041213
+
+Jamie	Have mfs_import return a zero return code even if the stream is
+	truncated.  A message is still written to stderr.
+
+Jamie   Add internal NowShowing generation to tserver, and include an embedded
+	DeleteShowing script.
+	
+Jamie	Put into a CVS repository
+
+Jamie	add mkpkg.sh for building distribution packages
+-----------------------------------------------------------------------------
+20041129
+
+Jamie	Make CommercialSkipOffset optional in generate_xml().
+
+Jamie   Add -r and -f options to mfs_dumpobj  for recursive dumping of MFS trees.
+-----------------------------------------------------------------------------
+20041123
+
+Jamie	Regenerate the mfs_ftp patches in a form the busybox patch program likes.
+-----------------------------------------------------------------------------
+20041121
+
+w_cb	schema-5.4.txt
+
+w_cb	Support readonly access to an MFS in an inconsistent state.
+
+JBeuhl  Export expiration date in mfs_tmfstream; patch to mfs_ftp to
+        use it (mfs_ftp.jbuehl.patch).
+
+Jamie	Makefile options for static builds, and to use a library .so
+	for common code.
+
+	Merge mfs_export, mfs_stream, mfs_tarexport, mfs_tmfexport into
+        a new program, mfs_uberexport, and add cover scripts to
+        emulate old cmdlines.
+
+	Support ty+ in mfs_uberexport  (-Rx <path|fsid>)
+
+	Patch to mfs_ftp to use mfs_uberexport and mfs_import
+	(mfs_ftp.jamie.patch).
+
+JBeuhl  Enhancements to the MFS_DEVICE envvar handling to support
+        multidisk configurations with interleaved layouts for PC side
+        extraction.  This can occur if a B drive is added followed by 
+	an A drive expansion. The previous multidisk code from JonBig
+	didn't handle these cases.   See README.MFS_DEVICE for details.
+
+-----------------------------------------------------------------------------
+20041107
+
+0) Fix bug found by AlphaWolf (mfs_stream faults when writes to stdout fail).
+
+1) Merge in changes from JBuehl to optional format dates in human
+readable form in mfs_dumpobj.  I added code to determine the timezone
+offset when run on the tivo, but this code only works on TiVo software
+versions >= 4.0.  Only older software versions you'll see times in
+GMT.
+
+2) merge all the various "export_file" functions into a single
+function shared by all.
+
+3) Add new options to mfs_import and mfs_export:
+
+        -c <count>       number of bytes (defaults to size of fsid)
+        -s <start>       start offset, in bytes (defaults to 0)
+	-n <nbufs>	 number of sectors to use for buffering (default 256)
+	-p <priority>    Priority  0: ts; 1-99 RT FIFO
+	-t <ms>		 Rate control (throttle)
+                              -'ve  : no delay (default)
+                              0     : sched_yield() between chunks
+                              +'ve  : # of ms to delay between chunks
+	-v		 Verbose.  Progress messages on stderr
+
+Note that the starting offset and count can be on arbitrary byte
+boundaries now (not restricted to sector alignment.)
+
+4) Add a patch to mfs_ftp (mfs_ftp.patch) that can be applied to
+mfs_ftp.tcl to use the new features of mfs_import.  This gets mfs_ftp
+out of the middle on inserts, allowing mfs_import to use the socket
+directly.  The result is faster insertions and lower CPU usage during
+insertions.
+
+Note that with this patch, the mfs_ftp.tcl code uses mfs_import, not
+mfs_stdinsert.  Also, with this patch, mfs_ftp *requires* this new
+version of mfs_import.  It won't work with an older version.
+
+To apply this patch, go to the directory where mos_ftp.tuck lives, and
+apply via: "patch < MFA_ftp.patch".  For some reason the busybox patch
+on my tivo doesn't seem to like this patch format (created with diff
+-u).  I suggested patching on the linux side (or with cygwin patch
+under windows).
+
+** PLEASE ** Do not bother Riley if you try this patch and it has
+             problems.  Please report problems to me.
+
+-----------------------------------------------------------------------------

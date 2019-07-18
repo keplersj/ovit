@@ -1,0 +1,52 @@
+See README.adh for build instructions.
+
+This is an attempt to merge the various vplay derived branches.
+
+I started with mfs_vplay_tserver_stuff-20031204.zip from a posting
+from ADH@DDB.
+
+I added the mfs_tmfstream sources from JonBig@DDB.
+
+I included the improved mfs_import from embeem@AO and the improved
+util.c from ADH@DDB.
+
+I included my sd-h400_unlock utility.
+
+I made some performance improvements to mfs_fsid_pread/pwrite code to
+avoid unnecessary malloc's and memory copies for the common cases.
+
+I redid the schema code to compile in a schema (currently taken from
+5.4), with the option of reading one from a file (specified with
+the TIVO_SCHEMA environment variable).  As far as I can tell, schemas
+are backwards compatible, so using a newer schema with old TiVo
+software version is fine.  It's easy to compile in a new schema:
+
+	Run the schema.tcl file on your tivo to capture the scheme in
+	a text file.
+
+	Modify the Makefile to use this schema file instead of
+	schema-5.4.txt.
+
+I redid mfs_streams so it now works on with 4.0.1b and 5.1.1b.  If
+changes are required for other software versions, let me know.  I also
+corrected it so it reports both the recording fsid and the fsid of all
+parts.  The old version only reported the fsid of the first part.
+
+I added a stdout option to mfs_export.
+
+I #ifdef'd out all the priority setting code.  These were trying to
+elevate the priority to a real time FIFO priority of 1 (the lowest
+real time priority).  Without any priority modification, it should run
+as a time sharing process, which is below all the realtime processes.
+This should prevent it from interfering with the TiVo RT processes.
+If some can explain why the priority setting code was in there at all,
+please let me know.
+
+
+I merged tmf_stream, mfs_tarstream, mfs_tmfstream and mfs_export into
+a single program, mfs_uberexport.  There are shell scripts to provide
+command line compatibility with the old command names.  mfs_uberexport
+can also provide ty+ export now (all recording parts concatenated,
+followed by showing.xml.
+
+Jamie@DDB/AO  

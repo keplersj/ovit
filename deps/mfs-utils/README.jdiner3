@@ -1,0 +1,39 @@
+Everyone:
+
+Here is the source that was requested. Sorry it took so long. I have been busy
+but then everyone is. So anyway...
+
+In this zip file you will find 4 source files:
+
+mfs_export.c - 	The original mfs_export source from you off of the samba
+		web site.
+
+mfs_stream.c - 	This is the converted form of mfs_export that I wrote at
+		someone elses request. It was designed to present an
+		interface that looked like ExtractStream for use with
+		Gary's TivoApp. Many changes were made here including
+		free'ing of a buffer that was just dropped and partial
+		changes to use stdout, what extractstream did, and some
+		of the work to get to stderr output...
+
+		This also became the interface module for my tserver_mfs
+		program as the export_fsid was written and there was no
+		point in messing with it any further.
+
+server.c - 	This is my server source for the download. It was written
+		quckly but has worked well for the better part of a year.
+		It is a simple string parser with networking in it.
+
+		This is a new version, I didn't keep the old one. This
+		one has the new support for FTP style dual socket use.
+		In using that mode I was able to about double the
+		extraction speed on my DTivo with a Turbonet card.
+
+make	-	I got tired of messing with the makefile as I was only
+		building 2 things for what I was doing so I just created
+		a simple script to build it. But it is included here
+		just for completeness sake.
+
+--jdiner
+
+

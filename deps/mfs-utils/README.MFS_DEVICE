@@ -1,0 +1,44 @@
+Environment variable handling   2004/11/21  Jamie/JBuehl
+-----------------------------
+
+There are two environment variables that control what files are used
+for the MFS file systems: MFS_DEVICE and MFS_DEVLIST.
+
+When run on the TiVo itself, you don't need to specify either, though
+MFS_DEVICE should already be set by the TiVo startup scripts.
+
+When run on a Linux PC, the following possibilities apply:
+
+1) You have an A and possibly a B TiVo disk connected to your linux PC.
+
+   AAA is the block device file for the A disk (e.g. /dev/hdc or /dev/sda).
+   BBB is the block device file for the B disk (optional).
+
+   export MFS_DEVICE="AAA BBB"
+
+   The code will look for an MFS superblock on partition 10 of device
+   AAA and use the devlist there, substituting AAA for the A drive and
+   BBB for the B drive.
+
+   Your linux kernel must recognize the TiVo partition tables on your
+   disks for this option to work.  The tivopart program, available on
+   DDB, can help with this.  Alternatively, use a linux kernel that
+   has been modified to recognize the tivo partition tables.  Most
+   linux ISO images customized for use with TiVo disks should have
+   this modification.
+
+2) You have the raw MFS partitions copied out to files:
+
+   export MFS_DEVLIST="/tmp/hda10 /tmp/hda11 /tmp/hdb2 /tmp/hdb3"
+
+   The partition images must be listed in the order the devices are
+   listed in the tivo superblock.
+
+3) You have the raw disk copied out to a file
+
+    export MFS_DEVLIST="/scratch/hda /scratch/hdb"
+
+   This case does not support two disk configurations with interleaved
+   layouts.  The interleaved layouts can occur if you add a B drive
+   first, then expand the A drive later.
+

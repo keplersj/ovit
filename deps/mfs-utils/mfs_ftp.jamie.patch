@@ -1,0 +1,147 @@
+--- mfs_ftp.tcl.orig	2004-11-23 18:01:09.310171289 -0700
++++ mfs_ftp.tcl	2004-11-23 18:01:01.101116176 -0700
+@@ -14,10 +14,12 @@
+ ##############################################################################
+ proc init_vars { } {
+ global info argv control_socket db resume
+-set info(version) "1.2.9p"
+-set info(ithrottle) 3
+-set info(insert_priority) 10
++set info(version) "1.2.9p-Jamie"
++set info(ithrottle) -1
++set info(insert_priority) 0
+ set info(dbl) 0
++# nbufs: number of 512byte buffers mfs_insert uses for buffering. --Jamie
++set info(nbufs) 256
+ set info(multithreaded) 0
+ set info(saveuntil) suggestion
+ set info(name_detail) 5
+@@ -293,7 +295,7 @@
+ 
+ proc mfs_stream_size { fsid } {
+ global info
+- set inf [open "|$info(path)/mfs_stream -s $fsid 2>/dev/null " r]
++ set inf [open "|$info(path)/mfs_uberexport -c 16 $fsid 2>/dev/null " r]
+  fconfigure $inf -translation binary
+  set mc [string range [read $inf 16] 12 15]
+  catch { close $inf } ev
+@@ -514,7 +516,7 @@
+ global info
+ outd 2 "stream_tmf: recobj\{$fsid\}"
+ set stime [expr [clock seconds]]
+-set pout [open "|$info(path)/mfs_tarstream -x -s $parts >@$info(dc) 2>/dev/null " w]
++set pout [open "|$info(path)/mfs_uberexport -tx $parts >@$info(dc) 2>/dev/null " w]
+ fconfigure $pout -translation binary ; fconfigure $info(dc) -translation binary
+ setpri 1 $pout 1 ; puts -nonewline $pout $info(xml); close $pout
+ set etime [expr [clock seconds] - $stime]
+@@ -533,14 +535,17 @@
+   set fsid [lindex $resume(parts) $i]
+   set c [expr [lindex $resume(sizes) $i] - $s]
+   if { $s != 0 && $resume(e) == 1 } {
++      # Could probably remove the use of the pipe file here since
++      # mfs_uberexport can seek to bytes and write to a socket on
++      # stdout --Jamie
+ puts "fixing to open fifo"
+ 	set inf [open $info(path)/fifo w+] ; catch { close $inf } ;#break_fifo
+-	outd $p "mfs_export -s $s -c $c $fsid \$info(dc)"
++	outd $p "mfs_uberexport -s $s -c $c $fsid \$info(dc)"
+ 	set skip_blocks [expr $s / 512] ; set ss [expr $skip_blocks * 512]
+ 	set diff [expr $s - $ss] ; set c [expr $c + $diff]
+ 	outd 2 "s $s\tskip_blocks $skip_blocks\tss $ss\tdiff $diff"
+-	outd 2 "mfs_export -s $ss -c $c $fsid \$info(dc)"
+-	set info(pipe) [open "|$info(path)/mfs_export -s $ss -c $c $fsid $info(path)/fifo >>& /dev/null " w]
++	outd 2 "mfs_uberexport -s $ss -c $c $fsid \$info(dc)"
++	set info(pipe) [open "|$info(path)/mfs_uberexport -s $ss -c $c -o $info(path)/fifo $fsid  >>& /dev/null " w]
+ 	set resume(s) 0
+ 	set info(fifo) [open $info(path)/fifo r]
+ 	fconfigure $info(fifo) -translation binary -buffersize 131072
+@@ -549,8 +554,8 @@
+ 	while { [eof $info(fifo)] != 1 } { set junk [read $info(fifo) 1024] ; outd 1 "flushing fifo" }
+ 	catch { close $info(fifo) } ; catch { close $info(pipe) }
+   } else {
+-	outd $p "mfs_stream \"$fsid\" -c $c"
+-	exec $info(path)/mfs_stream -s $fsid >@$info(dc) 2>/dev/null
++	outd $p "mfs_uberexport \"$fsid\""
++	exec $info(path)/mfs_uberexport $fsid >@$info(dc) 2>/dev/null
+   }
+  }
+  puts -nonewline $info(dc) $info(ty+)\n$info(xml)\n$info(ty+)
+@@ -710,12 +715,20 @@
+  set info(totalsize) [expr $info(totalsize) + $bytes/1024]
+  set newfsid [AddPart $fsid $bytes]
+ 	if { $newfsid != -1 } {
+- set outf [open "| $info(path)/mfs_stdinsert $newfsid - " w]
++
++# write the first chunk by piping into mfs_import --Jamie
++ outd $p "mfs_import on first part"	    
++ set outf [open "| $info(path)/mfs_import $newfsid -c 131072 >>&/dev/null" w]
+  fconfigure $outf -buffersize 4096 -translation binary
+- fconfigure $info(dc) -buffersize 4096 -translation binary
+  puts -nonewline $outf $info(mc) ; unset info(mc)
++ close $outf
++
++# write the rest with a separate mfs_import that reads directly from the socket --Jamie
+  set bytes [expr $bytes - 131072]
+- data_in $bytes $outf
++ outd $p "mfs_import on second part"	    
++ exec $info(path)/mfs_import -v -n $info(nbufs) -s 131072 -c $bytes -r $info(ithrottle) -p $info(insert_priority) $newfsid - <@$info(dc) >>& /dev/null
++ outd $p "done"	    
++
+ 	}
+ }
+ 
+@@ -760,9 +773,11 @@
+  set pbytes [expr $blocks * 512 - $bytes]
+  if { $info(bjuggle) == 1 } { bookmark_juggle $fsid }
+  set newfsid [AddPart $fsid $bytes]
+- set outf [open "| $info(path)/mfs_stdinsert $newfsid - " w]
+- fconfigure $outf -buffersize 4096 -translation binary ; fconfigure $info(dc) -buffersize 4096 -translation binary
+- data_in $bytes $outf
++# Use new mfs_import options and stay out of the middle -- Jamie
++ exec $info(path)/mfs_import -n $info(nbufs) -c $bytes -r $info(ithrottle) -p $info(insert_priority) $newfsid - <@$info(dc) >>& /dev/null
++ outd 1 "Back from mfs_import"
++ if { $pbytes > 0}  { set padding [read $info(dc) $pbytes] }
++
+ }
+ 
+ proc data_in { bytes outf } {
+@@ -792,7 +807,6 @@
+  catch { close $outf }
+ }
+ 
+-
+ proc data_out { c outf } {
+ global info
+  set chunksize 131072 ; set chunknum 0 ; set m 0
+@@ -1086,17 +1100,19 @@
+  set pdcs [socket -server newpdc $lport]
+  outd $p "passive data channel \"$info(localip):$lport\""
+  tee $fsock "227 Entering Passive Mode ($ipaddr,$lportftp)."
++# passive mode seems flakey.  Race condition here?  --Jamie
+ }
+ 
+ proc newpdc {sock addr port} {
+-global pdcs info ; set p 1
++global pdcs info; set p 1
+  outd $p "newpdc: open data channel $sock - connect from \"$addr:$port\""
+  set info(mode) PASV_connect
+  outd $p "closing server data socket \"$pdcs\" to new connections"
+  catch { close $pdcs } errval ; outd $p "errval \"$errval\""
+  outd $p "passive data channel info(dc) set to $sock"
+  set info(dc) $sock
+- fconfigure $sock -buffersize 4096 -translation binary
++# fconfigure $sock -buffersize 4096 -translation binary
++ fconfigure $info(dc) -buffering none -buffersize 512 -translation binary
+ }
+ 
+ proc PORT { line fsock } {
+@@ -1112,7 +1128,8 @@
+  set info(cport) [expr $ip5 * 256 + $portoffset]
+  set info(dc) [socket $info(portip) $info(cport)]
+  outd $p "data channel \"$info(dc)\" to $info(portip):$info(cport)"
+- fconfigure $info(dc) -buffersize 4096 -translation binary
++#   buffersize needs to match tar block size for tmf2fsid --Jamie
++ fconfigure $info(dc) -buffersize 512 -translation binary
+  tee $fsock "200 PORT command successful."
+ }
+ 

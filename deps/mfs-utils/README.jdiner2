@@ -1,0 +1,9 @@
+Alright. This is the source code for the current tserver_mfs version 5.
+
+The makefile was never updated. I was not interested in the other programs so I 
+created a simple script called make to just build what I wanted directly.
+
+The output of ./make are the mfs_stream and tserver_mfs programs.
+
+--jdiner
+

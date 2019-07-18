@@ -1,0 +1,84 @@
+Burst TServer Readme:
+
+What is this for?
+ - S1 Tivo's, with CacheCARD fitted. 
+ - And with a driver set installed that supports burst.
+   (see the cachecard burst mode forum over at www.silicondust.com)
+
+History:
+
+Back in January, Jafa released a driver update for the cachecard
+to allow 'Burst Mode' data transfers. The update consisted of 
+a new driver set, a tivo-side daemon called 'burstd' and a windows
+program 'burst.exe'. Instructions were included for how to backup
+the root partition using burst, but inevitable discussions about
+'can this be used to speed up extracts', lead nowhere, as the 
+authors of each app would have to incorporate the burst mode support
+individually into their apps. 
+
+All didn't seem lost when the next version of tytool was rumored
+to be supporting burst mode extracts, but 5months on, with no 
+burst mode support still, I figured it was worth a shot.
+
+
+What this does:
+
+As the windows burst client already accepted arguments to allow
+specification of drive-partition-sectorrange, to get it to extract
+would require sector range(s) for the file you were after.
+
+A small modification has been made to TServer to enable it to send
+sector information through to a connected tserver-client.  
+
+From this information, you can construct the calls to burst.exe
+to cause the extracts.
+
+
+How ? (the hard way):
+
+Simply telnet the tserver, and issue 
+  LISTSECTORS FSID/FSID/FSID 
+to be told the sector ranges for each part, the syntax for the 
+FSID/FSID/FSID section is identical to that for the TYSTREAM
+option.
+
+
+How ? (the easy way):
+
+If you don't fancy that, then theres a handy bit of php
+included that'll do the hard work for you, and as an advantage
+will also combine consecutive sector ranges into single ranges
+to reduce the number of burst.exe calls needed.
+
+Just tweak the top of tserver.php to tell it where your tivo is
+  $tivoip = "ip.of.my.tivo";
+Then access the tserver.php from a php equipped webserver. 
+
+(The webserver will need to be able to access the tivo, so 
+ watch out for any firewalls, NAT, etc, probably best not 
+ to go opening the tserver port on your router so the entire 
+ world can telnet your tivo! This is intended only for
+ use within the same lan, etc)
+
+From the webpage, you be able to view a list of shows, select
+a show to see the sector information, and from the sector
+information select a link to show you the burst commands you 
+would execute to retrieve that show.
+
+Note: 
+ Do not just cut and past the entire list of commands to a shell
+ It seems any user input (like pasting of a 2nd command) during
+ an extract, causes the extract in progress to fail.
+ Just paste the lines one by one. wait for each to finish before
+ pasting the next.
+
+You may also want to find a quicker way to rejoin the parts 
+back together than the copy command specified, as there are 
+much better ways of doing it that using copy, but none so widespread.
+
+
+Addendum: 
+
+There is also a command line utility, mfs_burstcmds, to retrieve the
+sector list info in the form of burst.exe commands.  Run
+'mfs_burstcmds -R <recordingFSID>'.

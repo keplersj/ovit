@@ -1,0 +1,43 @@
+use mfs_streams to find what video stream files are on your tivo
+
+use vplay to "play" with that fsid to a file or device
+
+use vplayer to play files remotely
+
+mfs_ls lists directories. Use -R for recursive listing.
+
+mfs_dumpobj dumps a TiVo object
+
+mfs_export exports files (of any type) from the mfs to a unix file
+
+mfs_info dumps some basic info on your fs and a fsid
+
+mfs_dump dumps some sectors (useful for debugging)
+
+The Makefile builds both i386 and tivo binaries. To build just the
+i386 binaries run "make host". Similarly for "make tivo". A simple
+"make" will build everything.
+
+Running the tivo binaries is easy, just copy them to your tivo and
+make sure MFS_DEVICE is set correctly before starting them. You should
+find that MFS_DEVICE is set by the tivo startup scripts, usually to
+/dev/hda10. 
+
+Running the binaries on a Linux PC is a bit different. The main thing
+you need to get right is the MFS_DEVLIST environment variable. Setting
+that allows you to run mfs commands against either a locally
+accesssible TiVo drive or a remote TiVo accessed across a TCP link. 
+
+To run on a local drive (or files containing images of a drive) you
+set MFS_DEVLIST to a space separated list of files/devices containing
+the MFS filesystem. For example:
+   export MFS_DEVLIST="/backup/hda10 /backup/hda11_aa /backup/hda11_ab"
+(Don't forget the export!) Then run the mfs_* commands as usual.
+
+To run on a remote TiVo you need to start a tivo vserver binary on the
+TiVo. Then on your Linux PC set MFS_DEVLIST to :hostname where
+hostname is the IP or hostname of your TiVo. Then run the mfs commands
+as usual.
+
+You can also point MFS_DEVLIST at a raw TiVo disk, and the mfs code
+will look in the TiVo partition table to find the MFS partitions. 

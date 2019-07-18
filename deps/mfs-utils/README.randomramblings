@@ -1,0 +1,4 @@
+test1 = no MFS processing at all. This is just a test for the parsing code in the front-end.
+test2 = Full setup for mfs work. But no mfs reading of data.
+test3 = Full setup for mfs, and full reading. But no writing to the network of any kind.
+

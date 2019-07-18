@@ -1,0 +1,38 @@
+This is a "unified" version of vplay distribution that attempts to merge the assorted branches that have evolved over the years.  This includes the mfs_* programs used by mfs_ftp, the tserver and vserver programs, and mfs_tmfstream, a tool used for extraction on a linux PC.  The main goal was to share a common code base so that performance and bug fixes could benefit everyone.
+
+These programs use considerably less CPU than the earlier builds I've found.  That has two advantages: faster transfers and less interference with the TiVo software and UI.  [URL=http://www.dealdatabase.com/forum/showthread.php?t=39328]This[/URL] thread will give you an idea of the current performance possible with this package and the 2.4.27 backport usb2 network drivers.
+
+There are five attachments:  
+[list=1]
+[*] mips   - binaries for Series 2 machines
+[*] ppc    - binaries for Series 1 machines
+[*] i386   - linux binaries for PC side extraction or for use with tserver
+[*] noarch - architecture independent files (README's and patches)
+[*] source
+[/list]
+
+Fetch the noarch package and read the README and CHANGES files.
+
+The noarch package includes the limited documentation available (sorry I didn't improve the situation much there) and two patches to mfs_ftp.  These patches should be considered experimental  and have not been vetted by Riley.  Please don't bother him if have mfs_ftp problems when using these patches; bother me instead.  My patch improves insertion speed and eliminates the intermediate programs by using mfs_uberexport directly.  JBuehl's patch uses expiration times exported from mfs_tmfstream when inserting.  The patches can be applied with "patch -p0 < PATCHFILE".  I had trouble applying them with the busybox patch program on the TiVo. I suggest you apply these on the PC side on a PC running linux, or with cygwin under windows.
+
+Fetch the binary packages for the architectures you are interested in and untar them on your PC and/or TiVO(s).  You'll get bin.<ARCH> subdirectories.  You can either add this to your path, or copy the programs into your favorite bin directory already on your path.
+
+To use with the unpatched mfs_ftp, copy mfs_{export,import,stream,tarstream,uberexport} to your mfs_ftp directory and make a symlink from mfs_import to  mfs_stdinsert.
+
+To use with the patched mfs_ftp, apply the patches and copy mfs_{uberexport,import} to your mfs_ftp directory.
+
+For use with tytools, use the tserver program here.
+
+Post support questions in the Newbie or Extraction, Insertion & Streaming Support forums.
+
+License & Credits:
+
+Released under the Gnu GPL v2
+
+Many people contributed to this package.  First and foremost, Tridge, the original author. See the CHANGES files for a list of the contributers.
+
+Original mfs_* package by tridge at samba.org, January 2001
+Modifications by:
+	adh, jamie, jbuehl, jdiner, jonbig, mbm, musclenerd, ppchacker, w_cb
+	and possibly others...
+

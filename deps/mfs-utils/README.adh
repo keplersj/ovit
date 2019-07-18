@@ -1,0 +1,14 @@
+To build for S1:
+make ARCH=ppc
+
+To build for S2:
+make ARCH=mips
+
+.o files are in obj.$(ARCH)
+executables are in bin.$(ARCH)
+
+The MYARCH stuff lets the Makefile automagically work the same whether
+you are building on a PC or building on the TiVo itself.  The undesirable
+side effect is that if your PC is MIPS or PPC based, it will break.
+
+Most of the generated binaries have not been tested.

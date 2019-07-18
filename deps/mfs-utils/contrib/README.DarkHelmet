@@ -1,0 +1,9 @@
+This is a hack to do an unscramble single-pass of a fsid with a few
+seatbelts to make sure that you really have the keys, and it really
+works, and that you're not about to trash valid code.
+
+Note.. unscramble.o will keep on caching the keys and will cause all
+the mfs_stream/mfs_export stuff to mistakenly re-scramble the already
+unscrambled data.  rmmod/insmod unscramble.o to flush its caches, and
+then run a csoscout.tcl pass to clear the cso values so that tivoapp
+can play it.

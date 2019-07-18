@@ -1,0 +1,113 @@
+Ok. This is the first release of my own custom Tivo Client and server system
+for extract and on-the-fly splitting.
+
+Some quick information about this system...
+
+This is my own custom replacement for Gary's TivoApp. It basically will
+do the same thing. I think it does it better. But that is a matter more
+of it doing what I want in the way I want than any hard proof.
+1- It is written as a multi-threaded single window Dialog app.
+2- It is designed to be small.
+3- It contains the latest VSplit #12 code for internal splitting.
+4- It contains a custom server that has the mfs_stream code burried in it.
+5- The server at the very start of running sets it's priority to 1. (the lowest)
+6- It contains a custom NowShowing.tcl program. THIS IS NOT THE SAME AS ANYONE
+     ELSES. I should probably have renamed it but I didn't.
+7- This is a work in progress. While it works flawlessly for me. There are things
+     it should do that it does not. Like remember your path and address for you
+     tivo. At the moment you will have to re-enter them at the start of each
+     session. NOT EACH TRANSFER BUT EACH SESSION!
+8- netcat, nfs, samba, etc... ARE NOT NEEDED by this system. All networking
+     is internal. While the networking code will work on a serial connection
+     there is still so much data to move that it would take forever...
+9- All of the name issues are being handled. the _, ?, | characters and more
+     are dealt with so that I have not had anything I could not grab from my
+     Tivo in a very long time.
+10- If you try to extract a show that was already extracted, rather than
+     over-writing the existing one names are tried as follows: file-1.m2v,
+     file-2.m2v, file-3.m2v and so on. There are no popup requesters for this
+     type of thing. I wanted to make sure that processing continued as I tend
+     to run this at night...
+11- Extracting and splitting using the internal code differs in run time by
+     only about .1 - .5 seconds for a full clip. Not to shabby. :)
+
+
+To run it. AND THIS IS VERY IMPORTANT. Some people have started running things
+at the initial startup via nice little additions to the rc.sysinit file. That
+is possible with this program but it does not search for the NowShowing.tcl.
+It has to be in the directory the program is run from... If it can't find it
+it will fail quickly in trying to get the current play list.
+
+
+To install:
+1- Send the 2 files: tserver_mfs and NowShowing.tcl to the tivo. Put them in
+   your favorite place. Make sure they go in binary mode and maintain the case
+   as found in the archive and shown in this text.
+
+2- Set the permissions with: chmod 777 tserver_mfs
+   and: chmod 777 NowShowing.tcl
+
+   Yes these permissions are wide open, but security on a tivo?!!? :)
+
+3- Put the TyTool.exe anywhere that you want it on your PC box.
+
+That's it. You are all installed.
+
+To Run it:
+
+1- Telnet to the tivo and cd to the directory containing the the tserver_mfs
+     program. Then run: ./tserver_mfs
+
+2- On the PC run TyTool.exe from either the command line or explorer.
+
+3- Enter your tivo's address, and set the local directory for the where to
+     place the extracted TyStreams.
+
+4- Click the refresh button or select it from the File menu. This will
+     retrieve the current list of shows form the Tivo/DTivo. In an effort
+     to not interfere with recording or playback this is done at a very
+     lower priority. As a result it can take up to 2 minutes to complete with
+     a very full tivo. I average about 30 seconds. It may seem like a long]
+     time when sitting there waiting but try to be patient.
+
+5- From the File menu pick the mode you want: VSplit mode or TyStream Mode
+
+	VSplit mode, runs internally the Vsplit #12 code as the stream is
+	  extracted. Therefore no staging .ty file is needed. I have tested
+	  the results extensively and they output of this GUI version is
+	  identical to the shell version.
+
+	TyStream mode, just extracts the straight TyStream from the Tivo and
+	  saves it as a .ty file. This can then be extracted using the shell
+	  version of VSplit or any number of other tools.
+
+6- Pick one or more shows from the list. The standard Windows functionality is
+     supports. Click 1, hold down the shift and click another to select
+     everything in between them. Or ctrl-click to randomly select entries.
+
+7- Hit the GET button at the bottom to start the transfer. There is at present
+     no means to abort a transfer... You can close the program and it will
+     exit cleanly but then you have to start it all back up etc... Look for
+     an abort in the next version...
+
+That's it for the extract and convert options....
+
+To run the GUI to process already extracted .TY files:
+
+1- Click the Parse File button or select Process File (Oooppps :) from the
+     File menu. This will open the standard windows file requester for
+     selecting .ty files. Then just open the file and it will process in the
+     same directory as the source. In order to make it easier to do you do not
+     enter a name for the output files. They are built as follows:
+
+	file.ty
+
+     becomes:
+
+	file.ty.m2v and file.ty.m2a.
+
+
+That's it. Enjoy. And as always if you find a bug, not a feature that does
+nothing, but a real bug please let me know.
+
+--jdiner

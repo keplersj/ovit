@@ -1,0 +1,20 @@
+--- mfs_ftp.tcl.orig	2004-11-23 17:59:32.626299428 -0700
++++ mfs_ftp.tcl	2004-11-23 18:00:04.301653619 -0700
+@@ -827,7 +827,7 @@
+ proc parse_xml { xmldata } {
+ global info ; set p 3
+ outd 2 "parse_xml:"
+- set info(attributes) "Title Description EpisodeTitle StartDate StopDate StartTime StopTime Duration Date OriginalAirDate CallSign Name Time"
++ set info(attributes) "Title Description EpisodeTitle StartDate StopDate ExpirationDate StartTime StopTime ExpirationTime Duration Date OriginalAirDate CallSign Name Time"
+  foreach item $info(attributes) { set info($item) "" }
+  set cso_tags "Begin CommercialSkipOffset End" ; set info(parts_csos) ""
+  set xml_lines [split $xmldata "\n"]
+@@ -885,7 +885,7 @@
+  outd $p "setrecinfo: recobj\{$recfsid\}"
+  set progitems "Title Description EpisodeTitle OriginalAirDate"
+  set showingitems "Date Duration Time"
+- set recitems "StartDate StartTime StopDate StopTime"
++ set recitems "StartDate StartTime StopDate StopTime ExpirationDate ExpirationTime"
+  set stationitems "CallSign Name"
+  RetryTransaction {
+ set rec [db $db openid $recfsid] ; set showing [dbobj $rec get Showing]

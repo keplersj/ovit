@@ -1,0 +1,11 @@
+2005/03/14
+
+OS X port contributed by Daniel Gimpelevich (aka sn9).
+
+The mfs_* tools have been compiled for OS X, but they've had limited
+testing.  Assume they might trash your tivo disks.
+
+OS X should recognize TiVo partition tables "out of the box".  Series
+1 TiVos will require a kernel extension, available here:
+http://josh.graessley.net/tivo/.
+
