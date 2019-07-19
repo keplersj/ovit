@@ -1,7 +1,7 @@
 /* this is the prefix file for Mac OS X development */
 
 #include <stdint.h>
-#include <Carbon/Carbon.h>
+// #include <Carbon/Carbon.h>
 
 #if !HAVE_CONFIG_H
 /* not exactly sure what needs to be done to premake.sh for Mac OS X */

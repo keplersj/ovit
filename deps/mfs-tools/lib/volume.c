@@ -12,9 +12,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
-#ifdef HAVE_ERRNO_H
+// #ifdef HAVE_ERRNO_H
 #include <errno.h>
-#endif
+// #endif
 #include <sys/param.h>
 #ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>
@@ -36,13 +36,13 @@
 /* with RO: the device or file will be opened O_RDONLY no matter what the */
 /* requested mode was. */
 char *
-mfsvol_device_translate (struct volume_handle *hnd, char *dev)
+mfsvol_device_translate(struct volume_handle *hnd, char *dev)
 {
 	static char devname[1024];
-	int dev_len = strcspn (dev, " ");
+	int dev_len = strcspn(dev, " ");
 
-/* See if it is in /dev, to be relocated. */
-	if (!strncmp (dev, "/dev/hd", 7) || !strncmp (dev, "/dev/sd", 7))
+	/* See if it is in /dev, to be relocated. */
+	if (!strncmp(dev, "/dev/hd", 7) || !strncmp(dev, "/dev/sd", 7))
 	{
 		char *devbase = NULL;
 
@@ -62,9 +62,9 @@ mfsvol_device_translate (struct volume_handle *hnd, char *dev)
 		if (devbase)
 		{
 #if TARGET_OS_MAC
-			sprintf (devname, "%ss%.*s", devbase, dev_len - 8, dev + 8);
+			sprintf(devname, "%ss%.*s", devbase, dev_len - 8, dev + 8);
 #else
-			sprintf (devname, "%s%.*s", devbase, dev_len - 8, dev + 8);
+			sprintf(devname, "%s%.*s", devbase, dev_len - 8, dev + 8);
 #endif
 
 			return devname;
@@ -82,12 +82,12 @@ mfsvol_device_translate (struct volume_handle *hnd, char *dev)
 /***************************************************************************/
 /* Add a volume to the internal list of open volumes.  Open it with flags. */
 uint64_t
-mfsvol_add_volume (struct volume_handle *hnd, char *path, int flags)
+mfsvol_add_volume(struct volume_handle *hnd, char *path, int flags)
 {
 	struct volume_info *newvol;
 	struct volume_info **loop;
 
-	newvol = calloc (sizeof (*newvol), 1);
+	newvol = calloc(sizeof(*newvol), 1);
 
 	if (!newvol)
 	{
@@ -95,61 +95,61 @@ mfsvol_add_volume (struct volume_handle *hnd, char *path, int flags)
 		return -1;
 	}
 
-/* Translate the device name to it's real world equivelent. */
-	path = mfsvol_device_translate (hnd, path);
+	/* Translate the device name to it's real world equivelent. */
+	path = mfsvol_device_translate(hnd, path);
 
 	if (!path)
 		return -1;
 
-/* If the user requested RO, let them have it.  This may break a writer */
-/* program, but thats what it is intended to do.  Also if write mode is */
-/* not normal, set RO as well, for the actual file, just in case. */
-	if (hnd->write_mode != vwNormal || !strncmp (path, "RO:", 3))
+	/* If the user requested RO, let them have it.  This may break a writer */
+	/* program, but thats what it is intended to do.  Also if write mode is */
+	/* not normal, set RO as well, for the actual file, just in case. */
+	if (hnd->write_mode != vwNormal || !strncmp(path, "RO:", 3))
 	{
 		path += 3;
 		flags = (flags & ~O_ACCMODE) | O_RDONLY;
 	}
 
-/* Open the file. */
-	newvol->file = tivo_partition_open (path, flags);
+	/* Open the file. */
+	newvol->file = tivo_partition_open(path, flags);
 
 	if (!newvol->file)
 	{
 		hnd->err_msg = "%s: %s";
-		hnd->err_arg1 = (size_t) path;
-		hnd->err_arg2 = (size_t)strerror (errno);
+		hnd->err_arg1 = (size_t)path;
+		hnd->err_arg2 = (size_t)strerror(errno);
 		return -1;
 	}
 
-/* If read-only was requested, make it so. */
+	/* If read-only was requested, make it so. */
 	if ((flags & O_ACCMODE) == O_RDONLY)
 	{
 		newvol->vol_flags |= VOL_RDONLY;
 	}
 
-/* Find out the size of the device. */
-	newvol->sectors = tivo_partition_size (newvol->file);
+	/* Find out the size of the device. */
+	newvol->sectors = tivo_partition_size(newvol->file);
 	if (newvol->sectors == 0)
 	{
 		hnd->err_msg = "%s: %s";
-		hnd->err_arg1 = (size_t) path;
-		hnd->err_arg2 = (size_t) strerror (errno);
+		hnd->err_arg1 = (size_t)path;
+		hnd->err_arg2 = (size_t)strerror(errno);
 	}
 
-/* TiVo rounds off the size of the partition to even counts of 1024 sectors. */
+	/* TiVo rounds off the size of the partition to even counts of 1024 sectors. */
 	newvol->sectors &= ~(MFS_PARTITION_ROUND - 1);
 
-/* If theres nothing there, assume the worst. */
+	/* If theres nothing there, assume the worst. */
 	if (!newvol->sectors)
 	{
 		hnd->err_msg = "Empty partition %s";
-		hnd->err_arg1 = (size_t) path;
-		tivo_partition_close (newvol->file);
-		free (newvol);
+		hnd->err_arg1 = (size_t)path;
+		tivo_partition_close(newvol->file);
+		free(newvol);
 		return -1;
 	}
 
-/* Add it to the tail of the volume list. */
+	/* Add it to the tail of the volume list. */
 	for (loop = &hnd->volumes; *loop; loop = &(*loop)->next)
 	{
 		newvol->start = (*loop)->start + (*loop)->sectors;
@@ -163,11 +163,11 @@ mfsvol_add_volume (struct volume_handle *hnd, char *path, int flags)
 /*******************************************************/
 /* Return the volume info for the volume sector is in. */
 struct volume_info *
-mfsvol_get_volume (struct volume_handle *hnd, uint64_t sector)
+mfsvol_get_volume(struct volume_handle *hnd, uint64_t sector)
 {
 	struct volume_info *vol;
 
-/* Find the volume this sector is from in the table of open volumes. */
+	/* Find the volume this sector is from in the table of open volumes. */
 	for (vol = hnd->volumes; vol; vol = vol->next)
 	{
 		if (vol->start <= sector && vol->start + vol->sectors > sector)
@@ -182,11 +182,11 @@ mfsvol_get_volume (struct volume_handle *hnd, uint64_t sector)
 /*************************************************/
 /* Return the size of volume starting at sector. */
 uint64_t
-mfsvol_volume_size (struct volume_handle *hnd, uint64_t sector)
+mfsvol_volume_size(struct volume_handle *hnd, uint64_t sector)
 {
 	struct volume_info *vol;
 
-/* Find the volume this sector is from in the table of open volumes. */
+	/* Find the volume this sector is from in the table of open volumes. */
 	for (vol = hnd->volumes; vol; vol = vol->next)
 	{
 		if (vol->start == sector)
@@ -206,7 +206,7 @@ mfsvol_volume_size (struct volume_handle *hnd, uint64_t sector)
 /**********************************************/
 /* Return the size of all loaded volume sets. */
 uint64_t
-mfsvol_volume_set_size (struct volume_handle *hnd)
+mfsvol_volume_set_size(struct volume_handle *hnd)
 {
 	struct volume_info *vol;
 	uint64_t total = 0;
@@ -222,12 +222,11 @@ mfsvol_volume_set_size (struct volume_handle *hnd)
 /****************************************************************************/
 /* Verify that a sector is writable.  This should be done for all groups of */
 /* sectors to be written, since individual volumes can be opened RDONLY. */
-int
-mfsvol_is_writable (struct volume_handle *hnd, uint64_t sector)
+int mfsvol_is_writable(struct volume_handle *hnd, uint64_t sector)
 {
 	struct volume_info *vol;
 
-	vol = mfsvol_get_volume (hnd, sector);
+	vol = mfsvol_get_volume(hnd, sector);
 
 	if (!vol)
 	{
@@ -243,8 +242,7 @@ mfsvol_is_writable (struct volume_handle *hnd, uint64_t sector)
 
 /***********************************************/
 /* Free space used by the volumes linked list. */
-void
-mfsvol_cleanup (struct volume_handle *hnd)
+void mfsvol_cleanup(struct volume_handle *hnd)
 {
 	while (hnd->volumes)
 	{
@@ -253,16 +251,16 @@ mfsvol_cleanup (struct volume_handle *hnd)
 		cur = hnd->volumes;
 		hnd->volumes = hnd->volumes->next;
 
-		tivo_partition_close (cur->file);
-		free (cur);
+		tivo_partition_close(cur->file);
+		free(cur);
 	}
 
 	if (hnd->hda)
-		free (hnd->hda);
+		free(hnd->hda);
 	if (hnd->hdb)
-		free (hnd->hdb);
+		free(hnd->hdb);
 
-	free (hnd);
+	free(hnd);
 }
 
 /*****************************************************************************/
@@ -270,10 +268,10 @@ mfsvol_cleanup (struct volume_handle *hnd)
 /* This returns the first sector with data for the read, so the reader will */
 /* need to walk the list to get the rest. */
 struct volume_mem_data *
-mfsvol_locate_mem_data_for_read (struct volume_info *volume, uint64_t sector, int count)
+mfsvol_locate_mem_data_for_read(struct volume_info *volume, uint64_t sector, int count)
 {
 	struct volume_mem_data *block;
-	
+
 	for (block = volume->mem_blocks; block; block = block->next)
 	{
 		if (block->start + block->sectors > sector)
@@ -292,12 +290,12 @@ mfsvol_locate_mem_data_for_read (struct volume_info *volume, uint64_t sector, in
 /* Locate a block in memory for writing. */
 /* This allocates a new block if needed, and will coalesce neighboring blocks. */
 struct volume_mem_data *
-mfsvol_locate_mem_data_for_write (struct volume_info *volume, uint64_t sector, int count)
+mfsvol_locate_mem_data_for_write(struct volume_info *volume, uint64_t sector, int count)
 {
 	struct volume_mem_data **block;
 	struct volume_mem_data *ret, *tmp;
 	uint64_t last_sector = sector + count;
-	
+
 	/* Find the first block that overlaps or butts up against the block to write */
 	for (block = &volume->mem_blocks; *block; block = &(*block)->next)
 	{
@@ -316,7 +314,7 @@ mfsvol_locate_mem_data_for_write (struct volume_info *volume, uint64_t sector, i
 			{
 				last_sector = tmp->start + tmp->sectors;
 			}
-			
+
 			break;
 		}
 	}
@@ -328,9 +326,9 @@ mfsvol_locate_mem_data_for_write (struct volume_info *volume, uint64_t sector, i
 		{
 			return *block;
 		}
-		
+
 		/* Re-use the existing block, reallocating it to be big enough. */
-		*block = realloc (*block, sizeof (struct volume_mem_data) + (last_sector - (*block)->start) * 512);
+		*block = realloc(*block, sizeof(struct volume_mem_data) + (last_sector - (*block)->start) * 512);
 		ret = *block;
 
 		/* Out of memory */
@@ -338,13 +336,13 @@ mfsvol_locate_mem_data_for_write (struct volume_info *volume, uint64_t sector, i
 		{
 			return NULL;
 		}
-		
+
 		ret->sectors = last_sector - ret->start;
 	}
 	else
 	{
 		/* No blocks overlap with the beginning of the area to write, so create a new entry */
-		ret = malloc (sizeof (struct volume_mem_data) + (last_sector - sector) * 512);
+		ret = malloc(sizeof(struct volume_mem_data) + (last_sector - sector) * 512);
 		ret->start = sector;
 		ret->sectors = last_sector - sector;
 		ret->next = *block;
@@ -356,14 +354,14 @@ mfsvol_locate_mem_data_for_write (struct volume_info *volume, uint64_t sector, i
 		/* Only copy the tail end of the overlap, the rest is about to be overwritten */
 		if (tmp->start + tmp->sectors > sector + count)
 		{
-			memcpy (&ret->data[(sector + count - ret->start) * 512], &tmp->data[(sector + count - tmp->start) * 512], (tmp->start + tmp->sectors - (sector + count)) * 512);
+			memcpy(&ret->data[(sector + count - ret->start) * 512], &tmp->data[(sector + count - tmp->start) * 512], (tmp->start + tmp->sectors - (sector + count)) * 512);
 		}
 		ret->next = tmp->next;
-		free (tmp);
+		free(tmp);
 	}
-	
+
 	/* Zero out the data that is about to be overwritten */
-	memset (&ret->data[(sector - ret->start) * 512], 0, count * 512);
+	memset(&ret->data[(sector - ret->start) * 512], 0, count * 512);
 
 	return ret;
 }
@@ -371,39 +369,38 @@ mfsvol_locate_mem_data_for_write (struct volume_info *volume, uint64_t sector, i
 /*****************************************************************************/
 /* Read data from the MFS volume set.  It must be in whole sectors, and must */
 /* not cross a volume boundry. */
-int
-mfsvol_read_data (struct volume_handle *hnd, void *buf, uint64_t sector, uint32_t count)
+int mfsvol_read_data(struct volume_handle *hnd, void *buf, uint64_t sector, uint32_t count)
 {
 	struct volume_info *vol;
 	struct volume_mem_data *block;
 	int nread = 0;
 
-	vol = mfsvol_get_volume (hnd, sector);
+	vol = mfsvol_get_volume(hnd, sector);
 
-/* If no volumes claim this sector, it's an IO error. */
+	/* If no volumes claim this sector, it's an IO error. */
 	if (!vol)
 	{
 		errno = EIO;
 		return -1;
 	}
 
-/* Make the sector number relative to this volume. */
+	/* Make the sector number relative to this volume. */
 	sector -= vol->start;
 
 	if (sector + count > vol->sectors)
 	{
 #if DEBUG
-		fprintf (stderr, "Attempt to read across volume boundry %"  PRIu64 "%d %" PRIu64 " %" PRIu64 "!", sector + vol->start, count, vol->start, vol->sectors);
+		fprintf(stderr, "Attempt to read across volume boundry %" PRIu64 "%d %" PRIu64 " %" PRIu64 "!", sector + vol->start, count, vol->start, vol->sectors);
 #else
-		fprintf (stderr, "Attempt to read across volume boundry!");
+		fprintf(stderr, "Attempt to read across volume boundry!");
 #endif
 		errno = EIO;
 		return -1;
 	}
 
 	/* Search for any mem data blocks within the read region. */
-	block = mfsvol_locate_mem_data_for_read (vol, sector, count);
-	
+	block = mfsvol_locate_mem_data_for_read(vol, sector, count);
+
 	while (nread < count * 512)
 	{
 		if (block && block->start <= sector + nread / 512)
@@ -412,10 +409,10 @@ mfsvol_read_data (struct volume_handle *hnd, void *buf, uint64_t sector, uint32_
 			int tocopy = block->sectors - (sector + nread / 512 - block->start);
 			if (block->start + block->sectors > sector + count)
 				tocopy -= block->start + block->sectors - (sector + count);
-			
-			memcpy (buf + (nread & ~511), &block->data[(sector + nread / 512 - block->start) * 512], tocopy * 512);
+
+			memcpy(buf + (nread & ~511), &block->data[(sector + nread / 512 - block->start) * 512], tocopy * 512);
 			nread += tocopy * 512;
-			
+
 			block = block->next;
 			/* Make sure the new block is still within the read */
 			if (block && block->start >= sector + count)
@@ -432,22 +429,22 @@ mfsvol_read_data (struct volume_handle *hnd, void *buf, uint64_t sector, uint32_
 			{
 				toread = block->start - sector - nread / 512;
 			}
-			
-			newread = tivo_partition_read (vol->file, buf + (nread & ~511), sector + nread / 512, toread);
+
+			newread = tivo_partition_read(vol->file, buf + (nread & ~511), sector + nread / 512, toread);
 			/* Propogate errors from any read up */
 			if (newread < 512)
 			{
 				if (newread < 0)
 					return newread;
-				
+
 				errno = EIO;
 				return -1;
 			}
-			
+
 			nread += newread & ~511;
 		}
 	}
-/* Read the data. */
+	/* Read the data. */
 	return nread;
 }
 
@@ -455,7 +452,7 @@ mfsvol_read_data (struct volume_handle *hnd, void *buf, uint64_t sector, uint32_
 /* Doesn't really belong here, but useful for debugging with MFS_FAKE_WRITE */
 /* set, this gets called instead of writing. */
 static void
-hexdump (unsigned char *buf, unsigned int sector)
+hexdump(unsigned char *buf, unsigned int sector)
 {
 	int ofs;
 
@@ -464,33 +461,32 @@ hexdump (unsigned char *buf, unsigned int sector)
 		unsigned char line[20];
 		int myo;
 
-		fprintf (stderr, "%05x:%03x ", sector, ofs);
+		fprintf(stderr, "%05x:%03x ", sector, ofs);
 
 		for (myo = 0; myo < 16; myo++)
 		{
-			fprintf (stderr, "%02x%c", buf[myo + ofs], myo < 15 && (myo & 3) == 3 ? '-' : ' ');
-			line[myo] = (isprint (buf[myo + ofs]) ? buf[myo + ofs] : '.');
+			fprintf(stderr, "%02x%c", buf[myo + ofs], myo < 15 && (myo & 3) == 3 ? '-' : ' ');
+			line[myo] = (isprint(buf[myo + ofs]) ? buf[myo + ofs] : '.');
 		}
 
-		fprintf (stderr, "|");
+		fprintf(stderr, "|");
 		line[16] = ':';
 		line[17] = '\n';
 		line[18] = 0;
-		fprintf (stderr, "%s", line);
+		fprintf(stderr, "%s", line);
 	}
 }
 
 /****************************************************************************/
 /* Write data to the MFS volume set.  It must be in whole sectors, and must */
 /* not cross a volume boundry. */
-int
-mfsvol_write_data (struct volume_handle *hnd, void *buf, uint64_t sector, uint32_t count)
+int mfsvol_write_data(struct volume_handle *hnd, void *buf, uint64_t sector, uint32_t count)
 {
 	struct volume_info *vol;
 
-	vol = mfsvol_get_volume (hnd, sector);
+	vol = mfsvol_get_volume(hnd, sector);
 
-/* If no volumes claim this sector, it's an IO error. */
+	/* If no volumes claim this sector, it's an IO error. */
 	if (!vol)
 	{
 		errno = EIO;
@@ -502,71 +498,69 @@ mfsvol_write_data (struct volume_handle *hnd, void *buf, uint64_t sector, uint32
 		int loop;
 		for (loop = 0; loop < count; loop++)
 		{
-			hexdump ((unsigned char *) buf + loop * 512, sector + loop);
+			hexdump((unsigned char *)buf + loop * 512, sector + loop);
 		}
 		/* Allow mem writes to continue, but not regular writes. */
 		if (hnd->write_mode == vwFake)
 			return count * 512;
 	}
-	
-/* Make the sector number relative to this volume. */
+
+	/* Make the sector number relative to this volume. */
 	sector -= vol->start;
 
 	if (hnd->write_mode & vwLocal)
 	{
-		struct volume_mem_data *block = mfsvol_locate_mem_data_for_write (vol, sector, count);
+		struct volume_mem_data *block = mfsvol_locate_mem_data_for_write(vol, sector, count);
 		if (!block)
 		{
 			errno = ENOMEM;
 			return -1;
 		}
-		memcpy (&block->data[(sector - block->start) * 512], buf, count * 512);
+		memcpy(&block->data[(sector - block->start) * 512], buf, count * 512);
 		return count * 512;
 	}
 
-/* If the volume this sector is in was opened read-only, it's an error. */
+	/* If the volume this sector is in was opened read-only, it's an error. */
 	if (vol->vol_flags & VOL_RDONLY)
 	{
-		fprintf (stderr, "mfsvol_write_data: Attempt to write to read-only volume. \n");
+		fprintf(stderr, "mfsvol_write_data: Attempt to write to read-only volume. \n");
 		errno = EPERM;
 		return -1;
 	}
 
 	if (sector + count > vol->sectors)
 	{
-		fprintf (stderr, "Attempt to write across volume boundry!\n");
+		fprintf(stderr, "Attempt to write across volume boundry!\n");
 		errno = EIO;
 		return -1;
 	}
 
-/* Write the data. */
-	return tivo_partition_write (vol->file, buf, sector, count);
+	/* Write the data. */
+	return tivo_partition_write(vol->file, buf, sector, count);
 }
 
 /******************************************************************************/
 /* Set local mem write mode for making temp changes in memory. */
-void
-mfsvol_enable_memwrite (struct volume_handle *hnd)
+void mfsvol_enable_memwrite(struct volume_handle *hnd)
 {
 	hnd->write_mode |= vwLocal;
 }
 
 /******************************************************************************/
 /* Discard changes written to memory and disable mem write mode. */
-void
-mfsvol_discard_memwrite (struct volume_handle *hnd)
+void mfsvol_discard_memwrite(struct volume_handle *hnd)
 {
 	struct volume_info *volume;
-	
+
 	for (volume = hnd->volumes; volume; volume = volume->next)
 	{
 		struct volume_mem_data *cur, *next;
-		
+
 		for (cur = volume->mem_blocks; cur; next = (cur = next)->next)
 		{
-			free (cur);
+			free(cur);
 		}
-		
+
 		volume->mem_blocks = NULL;
 	}
 
@@ -577,12 +571,12 @@ mfsvol_discard_memwrite (struct volume_handle *hnd)
 /* Just a quick init.  All it really does is scan for the env MFS_FAKE_WRITE. */
 /* Also get the real device names of hda and hdb. */
 struct volume_handle *
-mfsvol_init (const char *hda, const char *hdb)
+mfsvol_init(const char *hda, const char *hdb)
 {
-	char *fake = getenv ("MFS_FAKE_WRITE");
+	char *fake = getenv("MFS_FAKE_WRITE");
 	struct volume_handle *hnd;
 
-	hnd = calloc (sizeof (*hnd), 1);
+	hnd = calloc(sizeof(*hnd), 1);
 	if (!hnd)
 		return hnd;
 
@@ -592,41 +586,39 @@ mfsvol_init (const char *hda, const char *hdb)
 	}
 
 	if (hda && *hda)
-		hnd->hda = strdup (hda);
+		hnd->hda = strdup(hda);
 
 	if (hdb && *hdb)
-		hnd->hdb = strdup (hdb);
+		hnd->hdb = strdup(hdb);
 
 	return hnd;
 }
 
 /*************************/
 /* Display the MFS volume error */
-void
-mfsvol_perror (struct volume_handle *hnd, char *str)
+void mfsvol_perror(struct volume_handle *hnd, char *str)
 {
 	if (hnd->err_msg)
 	{
-		fprintf (stderr, "%s: ", str);
-		fprintf (stderr, hnd->err_msg, hnd->err_arg1, hnd->err_arg2, hnd->err_arg3);
-		fprintf (stderr, ".\n");
+		fprintf(stderr, "%s: ", str);
+		fprintf(stderr, hnd->err_msg, hnd->err_arg1, hnd->err_arg2, hnd->err_arg3);
+		fprintf(stderr, ".\n");
 	}
 	else
 	{
-		fprintf (stderr, "%s: No error.\n", str);
+		fprintf(stderr, "%s: No error.\n", str);
 	}
 }
 
 /*************************************/
 /* Return the MFS error in a string. */
-int
-mfsvol_strerror (struct volume_handle *hnd, char *str)
+int mfsvol_strerror(struct volume_handle *hnd, char *str)
 {
 	if (hnd->err_msg)
-		sprintf (str, hnd->err_msg, hnd->err_arg1, hnd->err_arg2, hnd->err_arg3);
+		sprintf(str, hnd->err_msg, hnd->err_arg1, hnd->err_arg2, hnd->err_arg3);
 	else
 	{
-		sprintf (str, "No error");
+		sprintf(str, "No error");
 
 		return 0;
 	}
@@ -636,8 +628,7 @@ mfsvol_strerror (struct volume_handle *hnd, char *str)
 
 /*******************************/
 /* Check if there is an error. */
-int
-mfsvol_has_error (struct volume_handle *hnd)
+int mfsvol_has_error(struct volume_handle *hnd)
 {
 	if (hnd->err_msg)
 		return 1;
@@ -647,8 +638,7 @@ mfsvol_has_error (struct volume_handle *hnd)
 
 /********************/
 /* Clear any errors */
-void
-mfsvol_clearerror (struct volume_handle *hnd)
+void mfsvol_clearerror(struct volume_handle *hnd)
 {
 	hnd->err_msg = 0;
 	hnd->err_arg1 = 0;

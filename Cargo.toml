@@ -8,3 +8,7 @@ edition = "2018"
 clap = "2.33.0"
 nom = "5.0.0"
 chrono = "0.4.7"
+
+[build-dependencies]
+cc = "1.0"
+bindgen = "0.50"

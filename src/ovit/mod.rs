@@ -1,3 +1,5 @@
+mod legacy;
+
 pub mod apple_partition_map;
 
 pub mod media_file_system;
