@@ -20,7 +20,8 @@ fn main() {
         .file("deps/mfs-tools/lib/readwrite.c")
         .file("deps/mfs-tools/lib/volume.c")
         .file("deps/mfs-tools/lib/zonemap.c")
-        .compile("mfstools");
+        .warnings(false)
+        .compile("libmfstools.a");
 
     let mfs_tools_bindings = bindgen::Builder::default()
         // The input header we would like to generate

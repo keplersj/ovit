@@ -3,6 +3,7 @@ name = "ovit"
 version = "0.1.0"
 authors = ["Kepler Sticka-Jones <kepler@stickajones.org>"]
 edition = "2018"
+build = "build.rs"
 
 [dependencies]
 clap = "2.33.0"

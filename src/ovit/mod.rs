@@ -1,4 +1,4 @@
-mod legacy;
+pub mod legacy;
 
 pub mod apple_partition_map;
 
