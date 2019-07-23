@@ -8,7 +8,7 @@ use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
 use std::vec::Vec;
-use util::{get_block_from_drive_and_correct_order, get_blocks_from_drive_and_correct_order};
+use util::get_block_from_drive_and_correct_order;
 
 pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
@@ -60,19 +60,12 @@ impl TivoDrive {
         let volume_header =
             MFSVolumeHeader::from_partition(app_region, &mut file, is_byte_swapped)?;
 
-        let first_zonemap_block = get_block_from_drive_and_correct_order(
+        let first_zonemap = MFSZoneMap::from_file_at_sector(
             &mut file,
             u64::from(app_region.starting_sector + volume_header.next_zonemap_sector),
+            volume_header.next_zonemap_partition_size as usize,
             is_byte_swapped,
-        )
-        .unwrap();
-
-        let first_zonemap = match MFSZoneMap::parse(&first_zonemap_block) {
-            Ok((_, zonemap)) => zonemap,
-            Err(err) => {
-                return Err(format!("Could not parse zonemap: {:?}", err));
-            }
-        };
+        )?;
 
         let mut zones = vec![first_zonemap];
 
@@ -80,31 +73,16 @@ impl TivoDrive {
         let mut next_zone_size = zones[0].next_zonemap_size;
 
         while next_zone_ptr != 0 {
-            let zonemap_bytes = &match get_blocks_from_drive_and_correct_order(
+            let zonemap = match MFSZoneMap::from_file_at_sector(
                 &mut file,
                 u64::from(app_region.starting_sector + next_zone_ptr),
                 next_zone_size as usize,
                 is_byte_swapped,
             ) {
-                Ok(blocks) => blocks,
-                Err(_) => {
-                    println!(
-                        "Couldn't load block at sector {} and size {}:",
-                        next_zone_ptr, next_zone_size
-                    );
-                    break;
-                }
-            };
-
-            let zonemap = match MFSZoneMap::parse(&zonemap_bytes) {
-                Ok((_, zonemap)) => zonemap,
-                Err(_err) => {
-                    println!(
-                        "Couldn't parse zonemap blocks at sector {} and size {}:,",
-                        next_zone_ptr, next_zone_size
-                    );
-                    // println!("Parser error: {:?}", err);
-                    println!("Lazilly continuing");
+                Ok(map) => map,
+                Err(err) => {
+                    println!("{:?}", err);
+                    println!("Continuing anyway");
                     break;
                 }
             };

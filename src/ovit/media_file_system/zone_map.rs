@@ -1,6 +1,8 @@
 extern crate nom;
 
+use crate::ovit::util::get_blocks_from_drive_and_correct_order;
 use nom::{bytes::streaming::tag, error::ErrorKind, number::streaming::be_u32, Err, IResult};
+use std::fs::File;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum MFSZoneType {
@@ -23,8 +25,10 @@ impl MFSZoneType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct MFSZoneMap {
+    // source_file: File,
+    // starting_sector: u32,
     pub sector: u32,
     pub backup_sector: u32,
     pub zonemap_size: u32,
@@ -45,7 +49,7 @@ pub struct MFSZoneMap {
 }
 
 impl MFSZoneMap {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSZoneMap> {
+    fn parse(input: &[u8]) -> IResult<&[u8], MFSZoneMap> {
         let (input, sector) = be_u32(input)?;
         let (input, backup_sector) = be_u32(input)?;
         let (input, zonemap_size) = be_u32(input)?;
@@ -87,5 +91,31 @@ impl MFSZoneMap {
                 bitmap_num,
             },
         ))
+    }
+
+    pub fn from_file_at_sector(
+        file: &mut File,
+        sector: u64,
+        size: usize,
+        is_byte_swapped: bool,
+    ) -> Result<MFSZoneMap, String> {
+        let zonemap_bytes =
+            &match get_blocks_from_drive_and_correct_order(file, sector, size, is_byte_swapped) {
+                Ok(blocks) => blocks.to_vec(),
+                Err(err) => {
+                    return Err(format!(
+                        "Couldn't load block at sector {} and size {} with error {:?}:",
+                        sector, size, err
+                    ));
+                }
+            };
+
+        match MFSZoneMap::parse(&zonemap_bytes) {
+            Ok((_, zonemap)) => Ok(zonemap),
+            Err(err) => Err(format!(
+                "Couldn't parse zonemap blocks at sector {} and size {} with err {:?}:,",
+                sector, size, err
+            )),
+        }
     }
 }

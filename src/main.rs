@@ -18,9 +18,16 @@ fn main() {
             // required we could have used an 'if let' to conditionally get the value)
             let input_path = sub_match.value_of("INPUT").unwrap();
 
-            let tivo_drive = ovit::TivoDrive::from_disk_image(input_path);
+            println!("Loading TiVo Drive");
 
-            println!("TiVo Drive: {:?}", tivo_drive);
+            let tivo_drive =
+                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive.");
+
+            println!("TiVo Drive Loaded!");
+
+            let inode_count = tivo_drive.inodes.len();
+
+            println!("Total INodes: {}", inode_count);
         }
         ("schema", Some(_sub_matches)) => {
             // let schema_contents = include_str!("schema.txt");
