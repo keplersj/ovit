@@ -1,5 +1,6 @@
 extern crate nom;
 
+use super::util::get_blocks_from_drive_and_correct_order;
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,
@@ -7,6 +8,7 @@ use nom::{
     number::streaming::be_u32,
     Err, IResult,
 };
+use std::fs::File;
 
 fn string(size: usize, input: &[u8]) -> IResult<&[u8], String> {
     let (input, str_bytes) = take(size)(input)?;
@@ -84,7 +86,7 @@ pub struct ApplePartitionMap {
 }
 
 impl ApplePartitionMap {
-    pub fn parse_from_driver_descriptor_map(input: &[u8]) -> IResult<&[u8], ApplePartitionMap> {
+    fn parse_from_driver_descriptor_map(input: &[u8]) -> IResult<&[u8], ApplePartitionMap> {
         let (input, partitions) = fold_many_m_n(
             1,
             64,
@@ -97,5 +99,22 @@ impl ApplePartitionMap {
         )(input)?;
 
         Ok((input, ApplePartitionMap { partitions }))
+    }
+
+    pub fn read_from_file(file: &mut File, is_byte_swapped: bool) -> Result<ApplePartitionMap, String> {
+        // The first block on a TiVo drive contain special TiVo magic,
+        //  we're not worried about this for reconstructing the partition map.
+        let partition_map_buffer =
+            match get_blocks_from_drive_and_correct_order(file, 1, 64, is_byte_swapped) {
+                Ok(buffer) => buffer.to_vec(),
+                Err(err) => {
+                    return Err(format!("Could not read block from drive {:?}", err));
+                }
+            };
+
+        match ApplePartitionMap::parse_from_driver_descriptor_map(&partition_map_buffer) {
+            Ok((_, partition_map)) => Ok(partition_map),
+            Err(err) => Err(format!("Could not parse map {:?}", err))
+        }
     }
 }
