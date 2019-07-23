@@ -1,81 +1,17 @@
 pub mod apple_partition_map;
-
 pub mod media_file_system;
-
 pub mod util;
 
 use apple_partition_map::ApplePartitionMap;
-
 use media_file_system::{MFSINode, MFSVolumeHeader, MFSZoneMap, MFSZoneType};
-
 use std::convert::TryInto;
-
 use std::fs::File;
-
 use std::io::prelude::*;
-
-use std::io::SeekFrom;
-
 use std::vec::Vec;
-
-use util::correct_byte_order;
+use util::{get_block_from_drive_and_correct_order, get_blocks_from_drive_and_correct_order};
 
 pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
-pub const APM_BLOCK_SIZE: usize = 512;
-
-pub fn get_block_from_drive_and_correct_order(
-    file: &mut File,
-    location: u64,
-    is_byte_swapped: bool,
-) -> Result<Vec<u8>, String> {
-    Ok(correct_byte_order(
-        &get_block_from_drive(file, location)?,
-        is_byte_swapped,
-    ))
-}
-
-pub fn get_block_from_drive(file: &mut File, location: u64) -> Result<Vec<u8>, String> {
-    get_blocks_from_drive(file, location, 1)
-}
-
-pub fn get_blocks_from_drive_and_correct_order(
-    file: &mut File,
-    location: u64,
-    count: usize,
-    is_byte_swapped: bool,
-) -> Result<Vec<u8>, String> {
-    Ok(correct_byte_order(
-        &get_blocks_from_drive(file, location, count)?,
-        is_byte_swapped,
-    ))
-}
-
-pub fn get_blocks_from_drive(
-    file: &mut File,
-    location: u64,
-    count: usize,
-) -> Result<Vec<u8>, String> {
-    let mut buffer = vec![0; APM_BLOCK_SIZE * count];
-
-    match file.seek(SeekFrom::Start(location * APM_BLOCK_SIZE as u64)) {
-        Ok(_) => {}
-        Err(_) => {
-            return Err(format!(
-                "Could not set file cursor to location {}",
-                location
-            ));
-        }
-    };
-
-    match file.read(&mut buffer) {
-        Ok(_) => Ok(buffer),
-        Err(_) => Err(format!(
-            "Could not read block from file at location {}",
-            location
-        )),
-    }
-}
 
 #[derive(Debug)]
 pub struct TivoDrive {
@@ -91,7 +27,7 @@ impl TivoDrive {
         let mut file = match File::open(path) {
             Ok(file) => file,
             Err(_) => {
-                return Err("Couldn't open image".to_string());
+                return Err("Couldn't open drive".to_string());
             }
         };
 
