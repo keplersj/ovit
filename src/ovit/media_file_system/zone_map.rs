@@ -96,6 +96,7 @@ impl MFSZoneMap {
     pub fn from_file_at_sector(
         file: &mut File,
         sector: u64,
+        backup_sector: u64,
         size: usize,
         is_byte_swapped: bool,
     ) -> Result<MFSZoneMap, String> {
@@ -112,10 +113,30 @@ impl MFSZoneMap {
 
         match MFSZoneMap::parse(&zonemap_bytes) {
             Ok((_, zonemap)) => Ok(zonemap),
-            Err(err) => Err(format!(
-                "Couldn't parse zonemap blocks at sector {} and size {} with err {:?}:,",
-                sector, size, err
-            )),
+            Err(_) => {
+                println!("Couldn't load zonemap, trying backup");
+                let backup_zonemap_bytes = &match get_blocks_from_drive_and_correct_order(
+                    file,
+                    backup_sector,
+                    size,
+                    is_byte_swapped,
+                ) {
+                    Ok(blocks) => blocks.to_vec(),
+                    Err(err) => {
+                        return Err(format!(
+                            "Couldn't load block at sector {} and size {} with error {:?}:",
+                            sector, size, err
+                        ));
+                    }
+                };
+                match MFSZoneMap::parse(&backup_zonemap_bytes) {
+                    Ok((_, backup_zonemap)) => Ok(backup_zonemap),
+                    Err(backup_err) => Err(format!(
+                        "Couldn't parse zonemap blocks at sector {} and size {} with err {:?}:,",
+                        sector, size, backup_err
+                    )),
+                }
+            }
         }
     }
 }

@@ -63,6 +63,7 @@ impl TivoDrive {
         let first_zonemap = MFSZoneMap::from_file_at_sector(
             &mut file,
             u64::from(app_region.starting_sector + volume_header.next_zonemap_sector),
+            u64::from(app_region.starting_sector + volume_header.next_zonemap_backup_sector),
             volume_header.next_zonemap_partition_size as usize,
             is_byte_swapped,
         )?;
@@ -70,12 +71,14 @@ impl TivoDrive {
         let mut zones = vec![first_zonemap];
 
         let mut next_zone_ptr = zones[0].next_zonemap_ptr;
+        let mut next_zone_backup = zones[0].backup_next_zonemap_ptr;
         let mut next_zone_size = zones[0].next_zonemap_size;
 
         while next_zone_ptr != 0 {
             let zonemap = match MFSZoneMap::from_file_at_sector(
                 &mut file,
                 u64::from(app_region.starting_sector + next_zone_ptr),
+                u64::from(app_region.starting_sector + next_zone_backup),
                 next_zone_size as usize,
                 is_byte_swapped,
             ) {
@@ -88,6 +91,7 @@ impl TivoDrive {
             };
 
             next_zone_ptr = zonemap.next_zonemap_ptr;
+            next_zone_backup = zonemap.backup_next_zonemap_ptr;
             next_zone_size = zonemap.next_zonemap_size;
 
             zones.push(zonemap);
