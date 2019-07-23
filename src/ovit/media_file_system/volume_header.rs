@@ -1,11 +1,14 @@
 extern crate nom;
 
+use crate::ovit::apple_partition_map::Partition;
+use crate::ovit::util::get_block_from_drive_and_correct_order;
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,
     number::streaming::be_u32,
     Err, IResult,
 };
+use std::fs::File;
 
 fn string(input: &[u8]) -> IResult<&[u8], String> {
     let (input, str_bytes) = take(128 as usize)(input)?;
@@ -30,7 +33,7 @@ pub struct MFSVolumeHeader {
 }
 
 impl MFSVolumeHeader {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSVolumeHeader> {
+    fn parse(input: &[u8]) -> IResult<&[u8], MFSVolumeHeader> {
         let (input, state) = be_u32(input)?;
         let (input, _) = tag([0xAB, 0xBA, 0xFE, 0xED])(input)?;
         let (input, checksum) = be_u32(input)?;
@@ -74,5 +77,22 @@ impl MFSVolumeHeader {
                 next_fsid,
             },
         ))
+    }
+
+    pub fn from_partition(
+        partition: &Partition,
+        source: &mut File,
+        is_byte_swapped: bool,
+    ) -> Result<MFSVolumeHeader, String> {
+        let block = get_block_from_drive_and_correct_order(
+            source,
+            u64::from(partition.starting_sector),
+            is_byte_swapped,
+        )?;
+
+        match MFSVolumeHeader::parse(&block) {
+            Ok((_, header)) => Ok(header),
+            Err(err) => Err(format!("Could not parse volume header: {:X?}", err)),
+        }
     }
 }

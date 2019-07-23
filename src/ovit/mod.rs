@@ -14,20 +14,20 @@ pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
 
 fn check_byte_order(file: &mut File) -> Result<bool, String> {
-        let mut buffer = [0; 2];
-        match file.read_exact(&mut buffer) {
-            Ok(_) => {}
-            Err(_) => {
-                return Err("Could not read first two bytes from file".to_string());
-            }
-        };
-
-        match u16::from_be_bytes(buffer[0..2].try_into().unwrap()) {
-            TIVO_BOOT_MAGIC => Ok(false),
-            TIVO_BOOT_AMIGC => Ok(true),
-            _ => Err("Not a TiVo Drive".to_string()),
+    let mut buffer = [0; 2];
+    match file.read_exact(&mut buffer) {
+        Ok(_) => {}
+        Err(_) => {
+            return Err("Could not read first two bytes from file".to_string());
         }
+    };
+
+    match u16::from_be_bytes(buffer[0..2].try_into().unwrap()) {
+        TIVO_BOOT_MAGIC => Ok(false),
+        TIVO_BOOT_AMIGC => Ok(true),
+        _ => Err("Not a TiVo Drive".to_string()),
     }
+}
 
 #[derive(Debug)]
 pub struct TivoDrive {
@@ -57,19 +57,8 @@ impl TivoDrive {
             .find(|partition| partition.r#type == "MFS")
             .unwrap();
 
-        let app_region_block = get_block_from_drive_and_correct_order(
-            &mut file,
-            u64::from(app_region.starting_sector),
-            is_byte_swapped,
-        )
-        .unwrap();
-
-        let volume_header = match MFSVolumeHeader::parse(&app_region_block) {
-            Ok((_, header)) => header,
-            Err(err) => {
-                return Err(format!("Could not parse volume header: {:X?}", err));
-            }
-        };
+        let volume_header =
+            MFSVolumeHeader::from_partition(app_region, &mut file, is_byte_swapped)?;
 
         let first_zonemap_block = get_block_from_drive_and_correct_order(
             &mut file,

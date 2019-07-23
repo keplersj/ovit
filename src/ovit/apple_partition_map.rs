@@ -101,7 +101,10 @@ impl ApplePartitionMap {
         Ok((input, ApplePartitionMap { partitions }))
     }
 
-    pub fn read_from_file(file: &mut File, is_byte_swapped: bool) -> Result<ApplePartitionMap, String> {
+    pub fn read_from_file(
+        file: &mut File,
+        is_byte_swapped: bool,
+    ) -> Result<ApplePartitionMap, String> {
         // The first block on a TiVo drive contain special TiVo magic,
         //  we're not worried about this for reconstructing the partition map.
         let partition_map_buffer =
@@ -114,7 +117,7 @@ impl ApplePartitionMap {
 
         match ApplePartitionMap::parse_from_driver_descriptor_map(&partition_map_buffer) {
             Ok((_, partition_map)) => Ok(partition_map),
-            Err(err) => Err(format!("Could not parse map {:?}", err))
+            Err(err) => Err(format!("Could not parse map {:?}", err)),
         }
     }
 }
