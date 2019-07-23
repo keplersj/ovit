@@ -1,8 +1,6 @@
 mod ovit;
 extern crate clap;
 use clap::{App, Arg, SubCommand};
-use std::ffi::CString;
-use std::ptr;
 
 fn main() {
     let matches = App::new("oViT")
@@ -20,17 +18,9 @@ fn main() {
             // required we could have used an 'if let' to conditionally get the value)
             let input_path = sub_match.value_of("INPUT").unwrap();
 
-            let init = unsafe {
-                ovit::legacy::mfs_tools::mfs_init(
-                    CString::new(input_path)
-                        .expect("CString::new failed")
-                        .as_ptr() as *mut i8,
-                    ptr::null::<i8>() as *mut i8,
-                    0,
-                )
-            };
+            let tivo_drive = ovit::TivoDrive::from_disk_image(input_path);
 
-            println!("{:?}", init);
+            println!("TiVo Drive: {:?}", tivo_drive);
         }
         ("schema", Some(_sub_matches)) => {
             // let schema_contents = include_str!("schema.txt");
