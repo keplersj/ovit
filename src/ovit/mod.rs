@@ -24,8 +24,31 @@ pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
 pub const APM_BLOCK_SIZE: usize = 512;
 
+pub fn get_block_from_drive_and_correct_order(
+    file: &mut File,
+    location: u64,
+    is_byte_swapped: bool,
+) -> Result<Vec<u8>, String> {
+    Ok(correct_byte_order(
+        &get_block_from_drive(file, location)?,
+        is_byte_swapped,
+    ))
+}
+
 pub fn get_block_from_drive(file: &mut File, location: u64) -> Result<Vec<u8>, String> {
     get_blocks_from_drive(file, location, 1)
+}
+
+pub fn get_blocks_from_drive_and_correct_order(
+    file: &mut File,
+    location: u64,
+    count: usize,
+    is_byte_swapped: bool,
+) -> Result<Vec<u8>, String> {
+    Ok(correct_byte_order(
+        &get_blocks_from_drive(file, location, count)?,
+        is_byte_swapped,
+    ))
 }
 
 pub fn get_blocks_from_drive(
@@ -90,12 +113,13 @@ impl TivoDrive {
 
         // The first block on a TiVo drive contain special TiVo magic,
         //  we're not worried about this for reconstructing the partition map.
-        let partition_map_buffer = match get_blocks_from_drive(&mut file, 1, 64) {
-            Ok(buffer) => correct_byte_order(&buffer, is_byte_swapped),
-            Err(_) => {
-                return Err("Could not read block containing partition map".to_string());
-            }
-        };
+        let partition_map_buffer =
+            match get_blocks_from_drive_and_correct_order(&mut file, 1, 64, is_byte_swapped) {
+                Ok(buffer) => buffer,
+                Err(_) => {
+                    return Err("Could not read block containing partition map".to_string());
+                }
+            };
 
         let partition_map =
             match ApplePartitionMap::parse_from_driver_descriptor_map(&partition_map_buffer) {
@@ -111,10 +135,12 @@ impl TivoDrive {
             .find(|partition| partition.r#type == "MFS")
             .unwrap();
 
-        let app_region_block = correct_byte_order(
-            &get_block_from_drive(&mut file, u64::from(app_region.starting_sector)).unwrap(),
+        let app_region_block = get_block_from_drive_and_correct_order(
+            &mut file,
+            u64::from(app_region.starting_sector),
             is_byte_swapped,
-        );
+        )
+        .unwrap();
 
         let volume_header = match MFSVolumeHeader::parse(&app_region_block) {
             Ok((_, header)) => header,
@@ -123,14 +149,12 @@ impl TivoDrive {
             }
         };
 
-        let first_zonemap_block = correct_byte_order(
-            &get_block_from_drive(
-                &mut file,
-                u64::from(app_region.starting_sector + volume_header.next_zonemap_sector),
-            )
-            .unwrap(),
+        let first_zonemap_block = get_block_from_drive_and_correct_order(
+            &mut file,
+            u64::from(app_region.starting_sector + volume_header.next_zonemap_sector),
             is_byte_swapped,
-        );
+        )
+        .unwrap();
 
         let first_zonemap = match MFSZoneMap::parse(&first_zonemap_block) {
             Ok((_, zonemap)) => zonemap,
@@ -145,23 +169,21 @@ impl TivoDrive {
         let mut next_zone_size = zones[0].next_zonemap_size;
 
         while next_zone_ptr != 0 {
-            let zonemap_bytes = correct_byte_order(
-                &match get_blocks_from_drive(
-                    &mut file,
-                    u64::from(app_region.starting_sector + next_zone_ptr),
-                    next_zone_size as usize,
-                ) {
-                    Ok(blocks) => blocks,
-                    Err(_) => {
-                        println!(
-                            "Couldn't load block at sector {} and size {}:",
-                            next_zone_ptr, next_zone_size
-                        );
-                        break;
-                    }
-                },
+            let zonemap_bytes = &match get_blocks_from_drive_and_correct_order(
+                &mut file,
+                u64::from(app_region.starting_sector + next_zone_ptr),
+                next_zone_size as usize,
                 is_byte_swapped,
-            );
+            ) {
+                Ok(blocks) => blocks,
+                Err(_) => {
+                    println!(
+                        "Couldn't load block at sector {} and size {}:",
+                        next_zone_ptr, next_zone_size
+                    );
+                    break;
+                }
+            };
 
             let zonemap = match MFSZoneMap::parse(&zonemap_bytes) {
                 Ok((_, zonemap)) => zonemap,
@@ -194,11 +216,9 @@ impl TivoDrive {
             if sector == 0 || sector % 2 == 0 {
                 let disk_sector =
                     u64::from(app_region.starting_sector + inode_zone.first_sector + sector);
-                let block = correct_byte_order(
-                    &get_block_from_drive(&mut file, disk_sector)
-                        .expect("Could not get block from drive"),
-                    is_byte_swapped,
-                );
+                let block =
+                    get_block_from_drive_and_correct_order(&mut file, disk_sector, is_byte_swapped)
+                        .expect("Could not get block from drive");
                 let inode = match MFSINode::parse(&block) {
                     Ok((_, inode)) => inode,
                     Err(err) => {
