@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 use std::fs::File;
-use std::io::SeekFrom;
 use std::io::prelude::*;
+use std::io::SeekFrom;
 
 const APM_BLOCK_SIZE: usize = 512;
 
@@ -20,6 +20,14 @@ pub fn correct_byte_order(raw_buffer: &[u8], is_byte_swapped: bool) -> Vec<u8> {
         .collect()
 }
 
+pub fn get_block_from_file(
+    path: &str,
+    location: u64,
+    is_byte_swapped: bool,
+) -> Result<Vec<u8>, String> {
+    get_blocks_from_file(path, location, 1, is_byte_swapped)
+}
+
 pub fn get_block_from_drive_and_correct_order(
     file: &mut File,
     location: u64,
@@ -33,6 +41,25 @@ pub fn get_block_from_drive_and_correct_order(
 
 pub fn get_block_from_drive(file: &mut File, location: u64) -> Result<Vec<u8>, String> {
     get_blocks_from_drive(file, location, 1)
+}
+
+pub fn get_blocks_from_file(
+    path: &str,
+    location: u64,
+    count: usize,
+    is_byte_swapped: bool,
+) -> Result<Vec<u8>, String> {
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(_) => {
+            return Err("Couldn't open drive".to_string());
+        }
+    };
+
+    Ok(correct_byte_order(
+        &get_blocks_from_drive(&mut file, location, count)?,
+        is_byte_swapped,
+    ))
 }
 
 pub fn get_blocks_from_drive_and_correct_order(

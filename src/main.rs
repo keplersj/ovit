@@ -25,9 +25,9 @@ fn main() {
 
             println!("TiVo Drive Loaded!");
 
-            let inode_count = tivo_drive.inodes.len();
-
-            println!("Total INodes: {}", inode_count);
+            for zone in tivo_drive.zonemap {
+                println!("{:#?}", zone);
+            }
         }
         ("schema", Some(_sub_matches)) => {
             // let schema_contents = include_str!("schema.txt");
