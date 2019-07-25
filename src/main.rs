@@ -2,6 +2,7 @@ mod ovit;
 extern crate clap;
 extern crate rayon;
 use clap::{App, Arg, SubCommand};
+use std::convert::TryInto;
 
 fn main() {
     let matches = App::new("oViT")
@@ -31,10 +32,30 @@ fn main() {
                 .inode_iter()
                 .unwrap()
                 .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Dir)
+                .filter(|inode| !inode.datablocks.is_empty())
                 .take(5)
                 .collect();
 
             println!("{:#?}", inode_sample);
+
+            let block = ovit::util::get_blocks_from_file(
+                &input_path,
+                u64::from(
+                    inode_sample[0].partition_starting_sector
+                        + inode_sample[0].datablocks[0].sector,
+                ),
+                inode_sample[0].datablocks[0].count as usize,
+                true,
+            )
+            .unwrap();
+
+            let block32: Vec<u32> = block
+                .chunks(4)
+                .map(|chunk| u32::from_be_bytes(chunk.try_into().unwrap()))
+                .collect();
+
+            println!("{:X?}", block32);
+            println!("{}", String::from_utf8_lossy(&block));
         }
         ("schema", Some(_sub_matches)) => {
             // let schema_contents = include_str!("schema.txt");

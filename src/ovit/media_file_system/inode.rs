@@ -6,6 +6,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,
+    multi::count,
     number::streaming::{be_u16, be_u32, be_u8},
     Err, IResult,
 };
@@ -33,6 +34,21 @@ impl MFSINodeType {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct MFSINodeDataBlock {
+    pub sector: u32,
+    pub count: u32,
+}
+
+impl MFSINodeDataBlock {
+    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSINodeDataBlock> {
+        let (input, sector) = be_u32(input)?;
+        let (input, count) = be_u32(input)?;
+
+        Ok((input, MFSINodeDataBlock { sector, count }))
+    }
+}
+
 #[derive(Debug)]
 pub struct MFSINode {
     pub fsid: u32,
@@ -50,14 +66,22 @@ pub struct MFSINode {
     pub flags: u32,
     pub data: Vec<u8>,
     pub numblocks: u32,
-    pub data_block_sector: u32,
-    pub data_block_count: u32,
+    pub datablocks: Vec<MFSINodeDataBlock>,
+
+    //Added for my conveinence
+    pub partition_starting_sector: u32,
+    pub sector_in_map: u32,
+    pub sector_on_drive: u32,
 }
 
 const INODE_DATA_IN_HEADER: u32 = 0x4000_0000;
 
 impl MFSINode {
-    pub fn parse(input: &[u8]) -> IResult<&[u8], MFSINode> {
+    pub fn parse(
+        input: &[u8],
+        partition_starting_sector: u32,
+        sector: u32,
+    ) -> IResult<&[u8], MFSINode> {
         let (input, fsid) = be_u32(input)?;
         let (input, refcount) = be_u32(input)?;
         let (input, bootcycles) = be_u32(input)?;
@@ -86,15 +110,12 @@ impl MFSINode {
         } else {
             be_u32(input)?
         };
-        let (input, data_block_sector) = if flags == INODE_DATA_IN_HEADER {
-            (input, 0)
+        let (input, datablocks) = if flags == INODE_DATA_IN_HEADER {
+            (input, vec![])
         } else {
-            be_u32(input)?
-        };
-        let (input, data_block_count) = if flags == INODE_DATA_IN_HEADER {
-            (input, 0)
-        } else {
-            be_u32(input)?
+            count(MFSINodeDataBlock::parse, numblocks as usize)(input)?
+            // let (input, datablock) = MFSINodeDataBlock::parse(input)?;
+            // (input, vec![datablock])
         };
 
         Ok((
@@ -115,8 +136,12 @@ impl MFSINode {
                 flags,
                 data,
                 numblocks,
-                data_block_sector,
-                data_block_count,
+                datablocks,
+
+                //Added for my convinence
+                partition_starting_sector,
+                sector_in_map: sector,
+                sector_on_drive: partition_starting_sector + sector,
             },
         ))
     }
@@ -133,7 +158,7 @@ impl MFSINode {
             is_byte_swapped,
         )?;
 
-        match MFSINode::parse(&inode_bytes) {
+        match MFSINode::parse(&inode_bytes, partition_starting_sector, sector) {
             Ok((_, inode)) => Ok(inode),
             Err(err) => Err(format!("Could not open inode with err {:?}", err)),
         }
@@ -162,12 +187,14 @@ impl Iterator for MFSINodeIter {
                 self.is_source_byte_swapped,
             ) {
                 Ok(inode) => inode,
-                Err(_) => {
+                Err(_err) => {
+                    println!("{:?}", _err);
                     return None;
                 }
             };
 
-            self.next_inode_sector += 1;
+            // self.next_inode_sector += 1;
+            self.next_inode_sector += 2; //Every exists on the drive twice
 
             Some(inode)
         } else {
