@@ -1,5 +1,6 @@
 mod ovit;
 extern crate clap;
+extern crate rayon;
 use clap::{App, Arg, SubCommand};
 
 fn main() {
@@ -25,29 +26,15 @@ fn main() {
 
             println!("TiVo Drive Loaded!");
 
-            let inode_zone = tivo_drive
+            let inode_sample: Vec<ovit::media_file_system::MFSINode> = tivo_drive
                 .zonemap
-                .find(|node| node.r#type == ovit::media_file_system::MFSZoneType::INode)
-                .expect("Could not load INode zone");
+                .inode_iter()
+                .unwrap()
+                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Dir)
+                .take(5)
+                .collect();
 
-            println!("{:#?}", inode_zone);
-
-            let app_region = tivo_drive
-                .partition_map
-                .partitions
-                .iter()
-                .find(|partition| partition.r#type == "MFS")
-                .unwrap();
-
-            let first_inode = ovit::media_file_system::MFSINode::from_path_at_sector(
-                &input_path,
-                app_region.starting_sector,
-                inode_zone.last_sector,
-                true,
-            )
-            .unwrap();
-
-            println!("{:#?}", first_inode);
+            println!("{:#?}", inode_sample);
         }
         ("schema", Some(_sub_matches)) => {
             // let schema_contents = include_str!("schema.txt");

@@ -1,5 +1,6 @@
 extern crate nom;
 
+use super::MFSINodeIter;
 use crate::ovit::util::get_blocks_from_file;
 use nom::{bytes::streaming::tag, error::ErrorKind, number::streaming::be_u32, Err, IResult};
 
@@ -173,6 +174,24 @@ impl MFSZoneMap {
             next_zonemap_ptr: sector,
             backup_next_zonemap_ptr: backup_sector,
             next_zonemap_size: size as u32,
+        })
+    }
+
+    pub fn inode_iter(&mut self) -> Result<MFSINodeIter, String> {
+        let inode_zone = match self.find(|node| node.r#type == MFSZoneType::INode) {
+            Some(node_zone) => node_zone,
+            None => {
+                return Err("Could not load inode zone".to_string());
+            }
+        };
+
+        Ok(MFSINodeIter {
+            source_file_path: String::from(&self.source_file_path),
+            partition_starting_sector: self.partition_starting_sector,
+            is_source_byte_swapped: self.is_source_byte_swapped,
+
+            next_inode_sector: inode_zone.first_sector,
+            last_inode_sector: inode_zone.last_sector,
         })
     }
 }

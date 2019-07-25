@@ -3,11 +3,10 @@ pub mod media_file_system;
 pub mod util;
 
 use apple_partition_map::ApplePartitionMap;
-use media_file_system::{MFSINode, MFSVolumeHeader, MFSZoneMap, MFSZoneType};
+use media_file_system::{MFSVolumeHeader, MFSZoneMap};
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
-use std::vec::Vec;
 
 pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;

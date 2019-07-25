@@ -139,3 +139,39 @@ impl MFSINode {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct MFSINodeIter {
+    pub source_file_path: String,
+    pub partition_starting_sector: u32,
+    pub is_source_byte_swapped: bool,
+
+    pub next_inode_sector: u32,
+    pub last_inode_sector: u32,
+}
+
+impl Iterator for MFSINodeIter {
+    type Item = MFSINode;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next_inode_sector != self.last_inode_sector + 1 {
+            let inode = match MFSINode::from_path_at_sector(
+                &self.source_file_path,
+                self.partition_starting_sector,
+                self.next_inode_sector,
+                self.is_source_byte_swapped,
+            ) {
+                Ok(inode) => inode,
+                Err(_) => {
+                    return None;
+                }
+            };
+
+            self.next_inode_sector += 1;
+
+            Some(inode)
+        } else {
+            None
+        }
+    }
+}
