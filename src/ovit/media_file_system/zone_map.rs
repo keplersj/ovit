@@ -117,7 +117,7 @@ impl MFSZone {
         match MFSZone::parse(&zonemap_bytes) {
             Ok((_, zonemap)) => Ok(zonemap),
             Err(_) => {
-                println!("Couldn't load zonemap, trying backup");
+                // println!("Couldn't load zonemap, trying backup");
                 let backup_zonemap_bytes = &match get_blocks_from_file(
                     path,
                     u64::from(partition_starting_sector + backup_sector),

@@ -20,14 +20,34 @@ fn main() {
 
             println!("Loading TiVo Drive");
 
-            let tivo_drive =
-                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive.");
+            let mut tivo_drive =
+                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive");
 
             println!("TiVo Drive Loaded!");
 
-            for zone in tivo_drive.zonemap {
-                println!("{:#?}", zone);
-            }
+            let inode_zone = tivo_drive
+                .zonemap
+                .find(|node| node.r#type == ovit::media_file_system::MFSZoneType::INode)
+                .expect("Could not load INode zone");
+
+            println!("{:#?}", inode_zone);
+
+            let app_region = tivo_drive
+                .partition_map
+                .partitions
+                .iter()
+                .find(|partition| partition.r#type == "MFS")
+                .unwrap();
+
+            let first_inode = ovit::media_file_system::MFSINode::from_path_at_sector(
+                &input_path,
+                app_region.starting_sector,
+                inode_zone.last_sector,
+                true,
+            )
+            .unwrap();
+
+            println!("{:#?}", first_inode);
         }
         ("schema", Some(_sub_matches)) => {
             // let schema_contents = include_str!("schema.txt");

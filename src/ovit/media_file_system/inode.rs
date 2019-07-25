@@ -1,6 +1,7 @@
 extern crate chrono;
 extern crate nom;
 
+use crate::ovit::util::get_block_from_file;
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     bytes::streaming::{tag, take},
@@ -118,5 +119,23 @@ impl MFSINode {
                 data_block_count,
             },
         ))
+    }
+
+    pub fn from_path_at_sector(
+        path: &str,
+        partition_starting_sector: u32,
+        sector: u32,
+        is_byte_swapped: bool,
+    ) -> Result<MFSINode, String> {
+        let inode_bytes = get_block_from_file(
+            path,
+            u64::from(partition_starting_sector + sector),
+            is_byte_swapped,
+        )?;
+
+        match MFSINode::parse(&inode_bytes) {
+            Ok((_, inode)) => Ok(inode),
+            Err(err) => Err(format!("Could not open inode with err {:?}", err)),
+        }
     }
 }
