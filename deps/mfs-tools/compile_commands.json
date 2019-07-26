@@ -1,0 +1,77 @@
+[
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include lib/crc.c",
+    "file": "lib/crc.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include lib/inode.c",
+    "file": "lib/inode.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include lib/mfs.c",
+    "file": "lib/mfs.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include lib/mfsdbschema.c",
+    "file": "lib/mfsdbschema.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include lib/readwrite.c",
+    "file": "lib/readwrite.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include lib/volume.c",
+    "file": "lib/volume.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include lib/zonemap.c",
+    "file": "lib/zonemap.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include mfsadd/mfsadd.c",
+    "file": "mfsadd/mfsadd.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include mfsck/mfsck.c",
+    "file": "mfsck/mfsck.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include mfscopy/copy.c",
+    "file": "mfscopy/copy.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include mfsd/mfsd.c",
+    "file": "mfsd/mfsd.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include mfsinfo/mfsinfo.c",
+    "file": "mfsinfo/mfsinfo.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include mfstool/mfstool.c",
+    "file": "mfstool/mfstool.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include mls/mls.c",
+    "file": "mls/mls.c"
+  },
+  {
+    "directory": "/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools",
+    "command": "/usr/bin/clang -I/Users/kepler/Developer/keplersj/ovit/deps/mfs-tools/include supersize/supersize.c",
+    "file": "supersize/supersize.c"
+  }
+]
