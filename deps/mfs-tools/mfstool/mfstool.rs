@@ -9,6 +9,25 @@
 extern crate libc;
 extern "C" {
     #[no_mangle]
+    fn backup_main(_: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn restore_main(_: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn copy_main(_: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn mfsadd_main(_: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn mls_main(_: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn supersize_main(_: libc::c_int, _: *mut *mut libc::c_char)
+     -> libc::c_int;
+    #[no_mangle]
+    fn mfsd_main(_: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn mfsinfo_main(_: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn mfsck_main(_: libc::c_int, _: *mut *mut libc::c_char) -> libc::c_int;
+    #[no_mangle]
     fn strcasecmp(_: *const libc::c_char, _: *const libc::c_char)
      -> libc::c_int;
     #[no_mangle]
@@ -29,10 +48,125 @@ pub struct C2RustUnnamed {
     pub desc: *mut libc::c_char,
 }
 #[no_mangle]
-pub static mut funcs: [C2RustUnnamed; 1] =
-    [C2RustUnnamed{name: 0 as *const libc::c_char as *mut libc::c_char,
-                   main: None,
-                   desc: 0 as *const libc::c_char as *mut libc::c_char,}];
+pub static mut funcs: [C2RustUnnamed; 10] =
+    unsafe {
+        [C2RustUnnamed{name:
+                           b"backup\x00" as *const u8 as *const libc::c_char
+                               as *mut libc::c_char,
+                       main:
+                           Some(backup_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"Backup TiVo drive fast and small.\x00" as
+                               *const u8 as *const libc::c_char as
+                               *mut libc::c_char,},
+         C2RustUnnamed{name:
+                           b"restore\x00" as *const u8 as *const libc::c_char
+                               as *mut libc::c_char,
+                       main:
+                           Some(restore_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"Restore mfstool backups to TiVo drive.\x00" as
+                               *const u8 as *const libc::c_char as
+                               *mut libc::c_char,},
+         C2RustUnnamed{name:
+                           b"copy\x00" as *const u8 as *const libc::c_char as
+                               *mut libc::c_char,
+                       main:
+                           Some(copy_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"Copy TiVo drive to a new drive.\x00" as *const u8
+                               as *const libc::c_char as *mut libc::c_char,},
+         C2RustUnnamed{name:
+                           b"add\x00" as *const u8 as *const libc::c_char as
+                               *mut libc::c_char,
+                       main:
+                           Some(mfsadd_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"Add partitions to your TiVo MFS volume.\x00" as
+                               *const u8 as *const libc::c_char as
+                               *mut libc::c_char,},
+         C2RustUnnamed{name:
+                           b"ck\x00" as *const u8 as *const libc::c_char as
+                               *mut libc::c_char,
+                       main:
+                           Some(mfsck_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"Perform a simple consistency check on MFS.\x00"
+                               as *const u8 as *const libc::c_char as
+                               *mut libc::c_char,},
+         C2RustUnnamed{name:
+                           b"mls\x00" as *const u8 as *const libc::c_char as
+                               *mut libc::c_char,
+                       main:
+                           Some(mls_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"List files in the MFS volume.\x00" as *const u8
+                               as *const libc::c_char as *mut libc::c_char,},
+         C2RustUnnamed{name:
+                           b"supersize\x00" as *const u8 as
+                               *const libc::c_char as *mut libc::c_char,
+                       main:
+                           Some(supersize_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"Supersize a TiVo drive.\x00" as *const u8 as
+                               *const libc::c_char as *mut libc::c_char,},
+         C2RustUnnamed{name:
+                           b"d\x00" as *const u8 as *const libc::c_char as
+                               *mut libc::c_char,
+                       main:
+                           Some(mfsd_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"Dump raw data from MFS volume.\x00" as *const u8
+                               as *const libc::c_char as *mut libc::c_char,},
+         C2RustUnnamed{name:
+                           b"info\x00" as *const u8 as *const libc::c_char as
+                               *mut libc::c_char,
+                       main:
+                           Some(mfsinfo_main as
+                                    unsafe extern "C" fn(_: libc::c_int,
+                                                         _:
+                                                             *mut *mut libc::c_char)
+                                        -> libc::c_int),
+                       desc:
+                           b"Display information about MFS volume.\x00" as
+                               *const u8 as *const libc::c_char as
+                               *mut libc::c_char,},
+         C2RustUnnamed{name: 0 as *const libc::c_char as *mut libc::c_char,
+                       main: None,
+                       desc: 0 as *const libc::c_char as *mut libc::c_char,}]
+    };
 #[no_mangle]
 pub unsafe extern "C" fn find_function(mut name: *mut libc::c_char)
  -> mainfunc {

@@ -43,6 +43,10 @@ extern "C" {
     #[no_mangle]
     fn restore_set_minalloc(info: *mut backup_info, minalloc: libc::c_uint);
     #[no_mangle]
+    fn restore_set_maxdisk(info: *mut backup_info, maxdisk: int64_t);
+    #[no_mangle]
+    fn restore_set_maxmedia(info: *mut backup_info, maxmedia: int64_t);
+    #[no_mangle]
     fn restore_set_bswap(info: *mut backup_info, bswap: libc::c_int);
     #[no_mangle]
     fn restore_write(info: *mut backup_info, buf: *mut libc::c_uchar,
@@ -77,15 +81,17 @@ pub struct mfs_handle {
     pub current_log: *mut log_hdr_s,
     pub inode_log_type: libc::c_int,
     pub is_64: libc::c_int,
-    pub bootcycle: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub lastlogsync: libc::c_int,
-    pub lastlogcommit: libc::c_int,
+    pub bootcycle: uint32_t,
+    pub bootsecs: uint32_t,
+    pub lastlogsync: uint32_t,
+    pub lastlogcommit: uint32_t,
     pub err_msg: *mut libc::c_char,
-    pub err_arg1: libc::c_int,
-    pub err_arg2: libc::c_int,
-    pub err_arg3: libc::c_int,
+    pub err_arg1: int64_t,
+    pub err_arg2: int64_t,
+    pub err_arg3: int64_t,
 }
+pub type int64_t = libc::c_longlong;
+pub type uint32_t = libc::c_uint;
 /* Linked lists of zone maps for a certain type of map */
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -122,10 +128,10 @@ pub type bitmap_header = bitmap_header_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct bitmap_header_s {
-    pub nbits: libc::c_int,
-    pub freeblocks: libc::c_int,
-    pub last: libc::c_int,
-    pub nints: libc::c_int,
+    pub nbits: uint32_t,
+    pub freeblocks: uint32_t,
+    pub last: uint32_t,
+    pub nints: uint32_t,
 }
 pub type zone_header = zone_header_u;
 #[derive ( Copy , Clone )]
@@ -140,24 +146,24 @@ pub type zone_header_64 = zone_header_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C, packed)]
 pub struct zone_header_64_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub next_sector: libc::c_int,
-    pub next_sbackup: libc::c_int,
-    pub next_size: libc::c_int,
-    pub first: libc::c_int,
-    pub last: libc::c_int,
-    pub size: libc::c_int,
-    pub free: libc::c_int,
-    pub next_length: libc::c_int,
-    pub length: libc::c_int,
-    pub min: libc::c_int,
-    pub next_min: libc::c_int,
-    pub logstamp: libc::c_int,
+    pub sector: uint64_t,
+    pub sbackup: uint64_t,
+    pub next_sector: uint64_t,
+    pub next_sbackup: uint64_t,
+    pub next_size: uint64_t,
+    pub first: uint64_t,
+    pub last: uint64_t,
+    pub size: uint64_t,
+    pub free: uint64_t,
+    pub next_length: uint32_t,
+    pub length: uint32_t,
+    pub min: uint32_t,
+    pub next_min: uint32_t,
+    pub logstamp: uint32_t,
     pub type_0: zone_type,
-    pub checksum: libc::c_int,
-    pub zero: libc::c_int,
-    pub num: libc::c_int,
+    pub checksum: uint32_t,
+    pub zero: uint32_t,
+    pub num: uint32_t,
 }
 pub type zone_type = zone_type_e;
 pub type zone_type_e = libc::c_uint;
@@ -166,43 +172,44 @@ pub const ztMax: zone_type_e = 3;
 pub const ztMedia: zone_type_e = 2;
 pub const ztApplication: zone_type_e = 1;
 pub const ztInode: zone_type_e = 0;
+pub type uint64_t = libc::c_ulonglong;
 /* addresses, pointing to mmapped */
 	/* memory from /tmp/fsmem for bitmaps */
 pub type zone_header_32 = zone_header_32_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_header_32_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
+    pub sector: uint32_t,
+    pub sbackup: uint32_t,
+    pub length: uint32_t,
     pub next: zone_map_ptr_32,
     pub type_0: zone_type,
-    pub logstamp: libc::c_int,
-    pub checksum: libc::c_int,
-    pub first: libc::c_int,
-    pub last: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
-    pub free: libc::c_int,
-    pub zero: libc::c_int,
-    pub num: libc::c_int,
+    pub logstamp: uint32_t,
+    pub checksum: uint32_t,
+    pub first: uint32_t,
+    pub last: uint32_t,
+    pub size: uint32_t,
+    pub min: uint32_t,
+    pub free: uint32_t,
+    pub zero: uint32_t,
+    pub num: uint32_t,
 }
 pub type zone_map_ptr_32 = zone_map_ptr_32_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_ptr_32_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
+    pub sector: uint32_t,
+    pub sbackup: uint32_t,
+    pub length: uint32_t,
+    pub size: uint32_t,
+    pub min: uint32_t,
 }
 /* Head of zone maps linked list, contains totals as well */
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_head {
-    pub size: libc::c_int,
-    pub free: libc::c_int,
+    pub size: uint64_t,
+    pub free: uint64_t,
     pub next: *mut zone_map,
 }
 pub type volume_header = volume_header_u;
@@ -216,41 +223,41 @@ pub type volume_header_64 = volume_header_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_header_64_s {
-    pub magicLSB: libc::c_int,
-    pub magicMSB: libc::c_int,
-    pub checksum: libc::c_int,
-    pub off0c: libc::c_int,
-    pub root_fsid: libc::c_int,
-    pub off14: libc::c_int,
-    pub firstpartsize: libc::c_int,
-    pub off1c: libc::c_int,
-    pub off20: libc::c_int,
+    pub magicLSB: uint32_t,
+    pub magicMSB: uint32_t,
+    pub checksum: uint32_t,
+    pub off0c: uint32_t,
+    pub root_fsid: uint32_t,
+    pub off14: uint32_t,
+    pub firstpartsize: uint32_t,
+    pub off1c: uint32_t,
+    pub off20: uint32_t,
     pub partitionlist: [libc::c_char; 132],
-    pub total_sectors: libc::c_int,
-    pub logstart: libc::c_int,
-    pub volhdrlogstamp: libc::c_int,
-    pub unkstart: libc::c_int,
-    pub offc8: libc::c_int,
-    pub unkstamp: libc::c_int,
+    pub total_sectors: uint64_t,
+    pub logstart: uint64_t,
+    pub volhdrlogstamp: uint64_t,
+    pub unkstart: uint64_t,
+    pub offc8: uint32_t,
+    pub unkstamp: uint32_t,
     pub zonemap: zone_map_ptr_64,
-    pub unknsectors: libc::c_int,
-    pub lognsectors: libc::c_int,
-    pub off100: libc::c_int,
-    pub next_fsid: libc::c_int,
-    pub bootcycles: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub off110: libc::c_int,
-    pub off114: libc::c_int,
+    pub unknsectors: uint32_t,
+    pub lognsectors: uint32_t,
+    pub off100: uint32_t,
+    pub next_fsid: uint32_t,
+    pub bootcycles: uint32_t,
+    pub bootsecs: uint32_t,
+    pub off110: uint32_t,
+    pub off114: uint32_t,
 }
 pub type zone_map_ptr_64 = zone_map_ptr_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_ptr_64_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
+    pub sector: uint64_t,
+    pub sbackup: uint64_t,
+    pub length: uint64_t,
+    pub size: uint64_t,
+    pub min: uint64_t,
 }
 pub type volume_header_32 = volume_header_32_s;
 // mfs filesystem database consistent 
@@ -262,29 +269,29 @@ pub type volume_header_32 = volume_header_32_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_header_32_s {
-    pub magicLSB: libc::c_int,
-    pub magicMSB: libc::c_int,
-    pub checksum: libc::c_int,
-    pub off0c: libc::c_int,
-    pub root_fsid: libc::c_int,
-    pub off14: libc::c_int,
-    pub firstpartsize: libc::c_int,
-    pub off1c: libc::c_int,
-    pub off20: libc::c_int,
+    pub magicLSB: uint32_t,
+    pub magicMSB: uint32_t,
+    pub checksum: uint32_t,
+    pub off0c: uint32_t,
+    pub root_fsid: uint32_t,
+    pub off14: uint32_t,
+    pub firstpartsize: uint32_t,
+    pub off1c: uint32_t,
+    pub off20: uint32_t,
     pub partitionlist: [libc::c_char; 128],
-    pub total_sectors: libc::c_int,
-    pub offa8: libc::c_int,
-    pub logstart: libc::c_int,
-    pub lognsectors: libc::c_int,
-    pub volhdrlogstamp: libc::c_int,
-    pub unkstart: libc::c_int,
-    pub unksectors: libc::c_int,
-    pub unkstamp: libc::c_int,
+    pub total_sectors: uint32_t,
+    pub offa8: uint32_t,
+    pub logstart: uint32_t,
+    pub lognsectors: uint32_t,
+    pub volhdrlogstamp: uint32_t,
+    pub unkstart: uint32_t,
+    pub unksectors: uint32_t,
+    pub unkstamp: uint32_t,
     pub zonemap: zone_map_ptr_32,
-    pub next_fsid: libc::c_int,
-    pub bootcycles: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub offe4: libc::c_int,
+    pub next_fsid: uint32_t,
+    pub bootcycles: uint32_t,
+    pub bootsecs: uint32_t,
+    pub offe4: uint32_t,
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -294,9 +301,9 @@ pub struct volume_handle {
     pub hda: *mut libc::c_char,
     pub hdb: *mut libc::c_char,
     pub err_msg: *mut libc::c_char,
-    pub err_arg1: libc::c_int,
-    pub err_arg2: libc::c_int,
-    pub err_arg3: libc::c_int,
+    pub err_arg1: int64_t,
+    pub err_arg2: int64_t,
+    pub err_arg3: int64_t,
 }
 /* Size that TiVo rounds the partitions down to whole increments of. */
 /* Flags for vol_flags below */
@@ -316,9 +323,9 @@ pub const vwNormal: volume_write_mode_e = 0;
 pub struct volume_info {
     pub file: *mut tivo_partition_file,
     pub vol_flags: libc::c_int,
-    pub start: libc::c_int,
-    pub sectors: libc::c_int,
-    pub offset: libc::c_int,
+    pub start: uint64_t,
+    pub sectors: uint64_t,
+    pub offset: uint64_t,
     pub mem_blocks: *mut volume_mem_data,
     pub next: *mut volume_info,
 }
@@ -326,8 +333,8 @@ pub struct volume_info {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_mem_data {
-    pub start: libc::c_int,
-    pub sectors: libc::c_int,
+    pub start: uint64_t,
+    pub sectors: uint64_t,
     pub next: *mut volume_mem_data,
     pub data: [libc::c_uchar; 0],
 }
@@ -349,7 +356,7 @@ pub union C2RustUnnamed {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct C2RustUnnamed_0 {
-    pub sectors: libc::c_int,
+    pub sectors: uint64_t,
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -361,8 +368,8 @@ pub struct C2RustUnnamed_1 {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct tivo_partition {
-    pub sectors: libc::c_int,
-    pub start: libc::c_int,
+    pub sectors: uint64_t,
+    pub start: uint64_t,
     pub refs: libc::c_uint,
     pub name: *mut libc::c_char,
     pub type_0: *mut libc::c_char,
@@ -378,7 +385,7 @@ pub struct tivo_partition_table {
     pub vol_flags: libc::c_int,
     pub count: libc::c_int,
     pub refs: libc::c_int,
-    pub devsize: libc::c_int,
+    pub devsize: uint64_t,
     pub allocated: libc::c_int,
     pub partitions: *mut tivo_partition,
     pub next: *mut tivo_partition_table,
@@ -411,7 +418,7 @@ pub struct zone_map_info {
     pub zone_type: libc::c_uint,
     pub fsmem_base: libc::c_uint,
     pub min_au: libc::c_uint,
-    pub size: libc::c_int,
+    pub size: uint64_t,
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -509,11 +516,11 @@ pub const bsScanMFS: backup_state = 0;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct backup_info {
-    pub cursector: libc::c_int,
-    pub nsectors: libc::c_int,
-    pub state_val1: libc::c_int,
-    pub state_val2: libc::c_int,
-    pub shared_val1: libc::c_int,
+    pub cursector: int64_t,
+    pub nsectors: int64_t,
+    pub state_val1: uint64_t,
+    pub state_val2: uint64_t,
+    pub shared_val1: uint64_t,
     pub state_ptr1: *mut libc::c_void,
     pub state: backup_state,
     pub format: backup_format,
@@ -534,10 +541,10 @@ pub struct backup_info {
     pub nzones: libc::c_int,
     pub zonemaps: *mut zone_map_info,
     pub ilogtype: libc::c_uint,
-    pub appsectors: libc::c_int,
-    pub mediasectors: libc::c_int,
-    pub appinodes: libc::c_int,
-    pub mediainodes: libc::c_int,
+    pub appsectors: uint64_t,
+    pub mediasectors: uint64_t,
+    pub appinodes: uint32_t,
+    pub mediainodes: uint32_t,
     pub back_flags: libc::c_int,
     pub rest_flags: libc::c_int,
     pub crc: libc::c_int,
@@ -545,9 +552,9 @@ pub struct backup_info {
     pub comp_buf: *mut libc::c_uchar,
     pub mfs: *mut mfs_handle,
     pub err_msg: *mut libc::c_char,
-    pub err_arg1: libc::c_int,
-    pub err_arg2: libc::c_int,
-    pub err_arg3: libc::c_int,
+    pub err_arg1: int64_t,
+    pub err_arg2: int64_t,
+    pub err_arg3: int64_t,
     pub thresh: libc::c_uint,
     pub skipdb: libc::c_uint,
     pub hda: *mut libc::c_char,
@@ -571,6 +578,29 @@ pub type backup_state_handler
                 -> backup_state_ret>; 18];
 #[no_mangle]
 pub unsafe extern "C" fn copy_usage(mut progname: *mut libc::c_char) { }
+unsafe extern "C" fn get_percent(mut current: uint64_t, mut max: uint64_t)
+ -> libc::c_uint {
+    let mut prcnt: libc::c_uint = 0;
+    if max <= (0x7fffffffi32 / 10000i32) as libc::c_ulonglong {
+        prcnt =
+            current.wrapping_mul(10000i32 as
+                                     libc::c_ulonglong).wrapping_div(max) as
+                libc::c_uint
+    } else if max <= (0x7fffffffi32 / 100i32) as libc::c_ulonglong {
+        prcnt =
+            current.wrapping_mul(100i32 as
+                                     libc::c_ulonglong).wrapping_div(max.wrapping_div(100i32
+                                                                                          as
+                                                                                          libc::c_ulonglong))
+                as libc::c_uint
+    } else {
+        prcnt =
+            current.wrapping_div(max.wrapping_div(10000i32 as
+                                                      libc::c_ulonglong)) as
+                libc::c_uint
+    }
+    return prcnt;
+}
 #[no_mangle]
 pub unsafe extern "C" fn get_drives(mut drives: *mut libc::c_char,
                                     mut adrive: *mut libc::c_char,

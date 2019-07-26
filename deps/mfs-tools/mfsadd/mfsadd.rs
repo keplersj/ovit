@@ -10,15 +10,20 @@ extern crate libc;
 extern "C" {
     pub type log_hdr_s;
     #[no_mangle]
+    fn mfs_partition_list(mfshnd: *mut mfs_handle) -> *mut libc::c_char;
+    #[no_mangle]
     fn mfs_has_error(mfshnd: *mut mfs_handle) -> libc::c_int;
     #[no_mangle]
     fn mfs_perror(mfshnd: *mut mfs_handle, str: *mut libc::c_char);
     #[no_mangle]
-    fn mfs_partition_list(mfshnd: *mut mfs_handle) -> *mut libc::c_char;
+    fn mfs_volume_pair_app_size(mfshnd: *mut mfs_handle, blocks: uint64_t,
+                                minalloc: libc::c_uint) -> uint64_t;
     #[no_mangle]
     fn mfs_sa_hours_estimate(mfshnd: *mut mfs_handle) -> libc::c_uint;
     #[no_mangle]
     fn tivo_partition_count(device: *const libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn tivo_partition_total_free(device: *const libc::c_char) -> uint64_t;
     #[no_mangle]
     fn tivo_partition_type(device: *const libc::c_char, partnum: libc::c_int)
      -> *mut libc::c_char;
@@ -32,7 +37,13 @@ extern "C" {
     fn tivo_partition_table_init(device: *const libc::c_char,
                                  swab: libc::c_int) -> libc::c_int;
     #[no_mangle]
+    fn tivo_partition_add(device: *const libc::c_char, size: uint64_t,
+                          before: libc::c_int, name: *const libc::c_char,
+                          type_0: *const libc::c_char) -> libc::c_int;
+    #[no_mangle]
     fn tivo_partition_table_write(device: *const libc::c_char) -> libc::c_int;
+    #[no_mangle]
+    fn tivo_partition_largest_free(device: *const libc::c_char) -> uint64_t;
     /* *
  * Tivo device names.
  * Defaults to /dev/hd{a,b}.  For a Premier backup, we'll replace these
@@ -51,11 +62,6 @@ extern "C" {
     #[no_mangle]
     fn strtoul(_: *const libc::c_char, _: *mut *mut libc::c_char,
                _: libc::c_int) -> libc::c_ulong;
-    //TODO: Change mediasize to this in order to round to the nearest chunk size (TiVo doesn't bother, so neither do we for now)
-				//mediasize = (maxfree - required) & ~(minalloc - 1);; /* only works when minalloc is base-2, which it might not be now, better to use the next one */
-				//mediasize = (maxfree - required) / minalloc * minalloc; /* this math works better for rounding down to the nearest minalloc, but doesn't take into account rounding to 4K boundary for modern disks, which tivo_partition_add will do, move along */
-				//mediasize = ((maxfree - required) / minalloc * minalloc) / 8 * 8; /* That should do it for rounding to the nearest chunk size (minalloc), if we must */
-    /* Round down to the nearest 4K boundary because tivo_partition_add does */
     // Friendly partition names
     #[no_mangle]
     fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...)
@@ -69,6 +75,9 @@ extern "C" {
     #[no_mangle]
     fn strcmp(_: *const libc::c_char, _: *const libc::c_char) -> libc::c_int;
 }
+pub type int64_t = libc::c_longlong;
+pub type uint64_t = libc::c_ulonglong;
+pub type uint32_t = libc::c_uint;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct mfs_handle {
@@ -79,14 +88,14 @@ pub struct mfs_handle {
     pub current_log: *mut log_hdr_s,
     pub inode_log_type: libc::c_int,
     pub is_64: libc::c_int,
-    pub bootcycle: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub lastlogsync: libc::c_int,
-    pub lastlogcommit: libc::c_int,
+    pub bootcycle: uint32_t,
+    pub bootsecs: uint32_t,
+    pub lastlogsync: uint32_t,
+    pub lastlogcommit: uint32_t,
     pub err_msg: *mut libc::c_char,
-    pub err_arg1: libc::c_int,
-    pub err_arg2: libc::c_int,
-    pub err_arg3: libc::c_int,
+    pub err_arg1: int64_t,
+    pub err_arg2: int64_t,
+    pub err_arg3: int64_t,
 }
 /* Linked lists of zone maps for a certain type of map */
 #[derive ( Copy , Clone )]
@@ -124,10 +133,10 @@ pub type bitmap_header = bitmap_header_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct bitmap_header_s {
-    pub nbits: libc::c_int,
-    pub freeblocks: libc::c_int,
-    pub last: libc::c_int,
-    pub nints: libc::c_int,
+    pub nbits: uint32_t,
+    pub freeblocks: uint32_t,
+    pub last: uint32_t,
+    pub nints: uint32_t,
 }
 pub type zone_header = zone_header_u;
 #[derive ( Copy , Clone )]
@@ -142,24 +151,24 @@ pub type zone_header_64 = zone_header_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C, packed)]
 pub struct zone_header_64_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub next_sector: libc::c_int,
-    pub next_sbackup: libc::c_int,
-    pub next_size: libc::c_int,
-    pub first: libc::c_int,
-    pub last: libc::c_int,
-    pub size: libc::c_int,
-    pub free: libc::c_int,
-    pub next_length: libc::c_int,
-    pub length: libc::c_int,
-    pub min: libc::c_int,
-    pub next_min: libc::c_int,
-    pub logstamp: libc::c_int,
+    pub sector: uint64_t,
+    pub sbackup: uint64_t,
+    pub next_sector: uint64_t,
+    pub next_sbackup: uint64_t,
+    pub next_size: uint64_t,
+    pub first: uint64_t,
+    pub last: uint64_t,
+    pub size: uint64_t,
+    pub free: uint64_t,
+    pub next_length: uint32_t,
+    pub length: uint32_t,
+    pub min: uint32_t,
+    pub next_min: uint32_t,
+    pub logstamp: uint32_t,
     pub type_0: zone_type,
-    pub checksum: libc::c_int,
-    pub zero: libc::c_int,
-    pub num: libc::c_int,
+    pub checksum: uint32_t,
+    pub zero: uint32_t,
+    pub num: uint32_t,
 }
 pub type zone_type = zone_type_e;
 pub type zone_type_e = libc::c_uint;
@@ -174,37 +183,37 @@ pub type zone_header_32 = zone_header_32_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_header_32_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
+    pub sector: uint32_t,
+    pub sbackup: uint32_t,
+    pub length: uint32_t,
     pub next: zone_map_ptr_32,
     pub type_0: zone_type,
-    pub logstamp: libc::c_int,
-    pub checksum: libc::c_int,
-    pub first: libc::c_int,
-    pub last: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
-    pub free: libc::c_int,
-    pub zero: libc::c_int,
-    pub num: libc::c_int,
+    pub logstamp: uint32_t,
+    pub checksum: uint32_t,
+    pub first: uint32_t,
+    pub last: uint32_t,
+    pub size: uint32_t,
+    pub min: uint32_t,
+    pub free: uint32_t,
+    pub zero: uint32_t,
+    pub num: uint32_t,
 }
 pub type zone_map_ptr_32 = zone_map_ptr_32_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_ptr_32_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
+    pub sector: uint32_t,
+    pub sbackup: uint32_t,
+    pub length: uint32_t,
+    pub size: uint32_t,
+    pub min: uint32_t,
 }
 /* Head of zone maps linked list, contains totals as well */
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_head {
-    pub size: libc::c_int,
-    pub free: libc::c_int,
+    pub size: uint64_t,
+    pub free: uint64_t,
     pub next: *mut zone_map,
 }
 pub type volume_header = volume_header_u;
@@ -218,41 +227,41 @@ pub type volume_header_64 = volume_header_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_header_64_s {
-    pub magicLSB: libc::c_int,
-    pub magicMSB: libc::c_int,
-    pub checksum: libc::c_int,
-    pub off0c: libc::c_int,
-    pub root_fsid: libc::c_int,
-    pub off14: libc::c_int,
-    pub firstpartsize: libc::c_int,
-    pub off1c: libc::c_int,
-    pub off20: libc::c_int,
+    pub magicLSB: uint32_t,
+    pub magicMSB: uint32_t,
+    pub checksum: uint32_t,
+    pub off0c: uint32_t,
+    pub root_fsid: uint32_t,
+    pub off14: uint32_t,
+    pub firstpartsize: uint32_t,
+    pub off1c: uint32_t,
+    pub off20: uint32_t,
     pub partitionlist: [libc::c_char; 132],
-    pub total_sectors: libc::c_int,
-    pub logstart: libc::c_int,
-    pub volhdrlogstamp: libc::c_int,
-    pub unkstart: libc::c_int,
-    pub offc8: libc::c_int,
-    pub unkstamp: libc::c_int,
+    pub total_sectors: uint64_t,
+    pub logstart: uint64_t,
+    pub volhdrlogstamp: uint64_t,
+    pub unkstart: uint64_t,
+    pub offc8: uint32_t,
+    pub unkstamp: uint32_t,
     pub zonemap: zone_map_ptr_64,
-    pub unknsectors: libc::c_int,
-    pub lognsectors: libc::c_int,
-    pub off100: libc::c_int,
-    pub next_fsid: libc::c_int,
-    pub bootcycles: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub off110: libc::c_int,
-    pub off114: libc::c_int,
+    pub unknsectors: uint32_t,
+    pub lognsectors: uint32_t,
+    pub off100: uint32_t,
+    pub next_fsid: uint32_t,
+    pub bootcycles: uint32_t,
+    pub bootsecs: uint32_t,
+    pub off110: uint32_t,
+    pub off114: uint32_t,
 }
 pub type zone_map_ptr_64 = zone_map_ptr_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_ptr_64_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
+    pub sector: uint64_t,
+    pub sbackup: uint64_t,
+    pub length: uint64_t,
+    pub size: uint64_t,
+    pub min: uint64_t,
 }
 pub type volume_header_32 = volume_header_32_s;
 // mfs filesystem database consistent 
@@ -264,29 +273,29 @@ pub type volume_header_32 = volume_header_32_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_header_32_s {
-    pub magicLSB: libc::c_int,
-    pub magicMSB: libc::c_int,
-    pub checksum: libc::c_int,
-    pub off0c: libc::c_int,
-    pub root_fsid: libc::c_int,
-    pub off14: libc::c_int,
-    pub firstpartsize: libc::c_int,
-    pub off1c: libc::c_int,
-    pub off20: libc::c_int,
+    pub magicLSB: uint32_t,
+    pub magicMSB: uint32_t,
+    pub checksum: uint32_t,
+    pub off0c: uint32_t,
+    pub root_fsid: uint32_t,
+    pub off14: uint32_t,
+    pub firstpartsize: uint32_t,
+    pub off1c: uint32_t,
+    pub off20: uint32_t,
     pub partitionlist: [libc::c_char; 128],
-    pub total_sectors: libc::c_int,
-    pub offa8: libc::c_int,
-    pub logstart: libc::c_int,
-    pub lognsectors: libc::c_int,
-    pub volhdrlogstamp: libc::c_int,
-    pub unkstart: libc::c_int,
-    pub unksectors: libc::c_int,
-    pub unkstamp: libc::c_int,
+    pub total_sectors: uint32_t,
+    pub offa8: uint32_t,
+    pub logstart: uint32_t,
+    pub lognsectors: uint32_t,
+    pub volhdrlogstamp: uint32_t,
+    pub unkstart: uint32_t,
+    pub unksectors: uint32_t,
+    pub unkstamp: uint32_t,
     pub zonemap: zone_map_ptr_32,
-    pub next_fsid: libc::c_int,
-    pub bootcycles: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub offe4: libc::c_int,
+    pub next_fsid: uint32_t,
+    pub bootcycles: uint32_t,
+    pub bootsecs: uint32_t,
+    pub offe4: uint32_t,
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -296,9 +305,9 @@ pub struct volume_handle {
     pub hda: *mut libc::c_char,
     pub hdb: *mut libc::c_char,
     pub err_msg: *mut libc::c_char,
-    pub err_arg1: libc::c_int,
-    pub err_arg2: libc::c_int,
-    pub err_arg3: libc::c_int,
+    pub err_arg1: int64_t,
+    pub err_arg2: int64_t,
+    pub err_arg3: int64_t,
 }
 /* Size that TiVo rounds the partitions down to whole increments of. */
 /* Flags for vol_flags below */
@@ -318,9 +327,9 @@ pub const vwNormal: volume_write_mode_e = 0;
 pub struct volume_info {
     pub file: *mut tivo_partition_file,
     pub vol_flags: libc::c_int,
-    pub start: libc::c_int,
-    pub sectors: libc::c_int,
-    pub offset: libc::c_int,
+    pub start: uint64_t,
+    pub sectors: uint64_t,
+    pub offset: uint64_t,
     pub mem_blocks: *mut volume_mem_data,
     pub next: *mut volume_info,
 }
@@ -328,8 +337,8 @@ pub struct volume_info {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_mem_data {
-    pub start: libc::c_int,
-    pub sectors: libc::c_int,
+    pub start: uint64_t,
+    pub sectors: uint64_t,
     pub next: *mut volume_mem_data,
     pub data: [libc::c_uchar; 0],
 }
@@ -351,7 +360,7 @@ pub union C2RustUnnamed {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct C2RustUnnamed_0 {
-    pub sectors: libc::c_int,
+    pub sectors: uint64_t,
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -363,8 +372,8 @@ pub struct C2RustUnnamed_1 {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct tivo_partition {
-    pub sectors: libc::c_int,
-    pub start: libc::c_int,
+    pub sectors: uint64_t,
+    pub start: uint64_t,
     pub refs: libc::c_uint,
     pub name: *mut libc::c_char,
     pub type_0: *mut libc::c_char,
@@ -380,7 +389,7 @@ pub struct tivo_partition_table {
     pub vol_flags: libc::c_int,
     pub count: libc::c_int,
     pub refs: libc::c_int,
-    pub devsize: libc::c_int,
+    pub devsize: uint64_t,
     pub allocated: libc::c_int,
     pub partitions: *mut tivo_partition,
     pub next: *mut tivo_partition_table,
@@ -460,6 +469,192 @@ pub unsafe extern "C" fn mfsadd_scan_partitions(mut mfs: *mut mfs_handle,
     if 0 != havebdrive {
         *seconddrive = 'b' as i32 as libc::c_char
     } else if 0 != havecdrive { *seconddrive = 'c' as i32 as libc::c_char }
+    return 0i32;
+}
+#[no_mangle]
+pub unsafe extern "C" fn mfsadd_add_extends(mut mfs: *mut mfs_handle,
+                                            mut drives:
+                                                *mut *mut libc::c_char,
+                                            mut xdevs: *mut *mut libc::c_char,
+                                            mut pairs: *mut *mut libc::c_char,
+                                            mut pairnums: *mut libc::c_char,
+                                            mut npairs: *mut libc::c_int,
+                                            mut minalloc: libc::c_int,
+                                            mut maxdisk: int64_t,
+                                            mut maxmedia: int64_t,
+                                            mut fill: libc::c_int)
+ -> libc::c_int {
+    let mut loop_0: libc::c_int = 0i32;
+    let mut loop2: libc::c_int = 0i32;
+    let mut tmp: libc::c_char = 0;
+    let mut appname: [libc::c_char; 32] = [0; 32];
+    let mut medianame: [libc::c_char; 32] = [0; 32];
+    let mut nparts: libc::c_int = 0i32;
+    let mut mfs_partitions: *mut libc::c_char = 0 as *mut libc::c_char;
+    // Get the current mfs partition count, so we can name the adds and make sure we don't exceed the max allowed
+    mfs_partitions = mfs_partition_list(mfs);
+    loop_0 = 0i32;
+    while 0 != *mfs_partitions.offset(loop_0 as isize) {
+        nparts += 1;
+        while 0 != *mfs_partitions.offset(loop_0 as isize) as libc::c_int &&
+                  0 ==
+                      isspace(*mfs_partitions.offset(loop_0 as isize) as
+                                  libc::c_int) {
+            loop_0 += 1
+        }
+        while 0 != *mfs_partitions.offset(loop_0 as isize) as libc::c_int &&
+                  0 !=
+                      isspace(*mfs_partitions.offset(loop_0 as isize) as
+                                  libc::c_int) {
+            loop_0 += 1
+        }
+    }
+    loop_0 = 0i32;
+    while loop_0 < 2i32 && !(*xdevs.offset(loop_0 as isize)).is_null() {
+        loop  {
+            let mut maxfree: uint64_t =
+                tivo_partition_largest_free(*xdevs.offset(loop_0 as isize));
+            let mut totalfree: uint64_t =
+                tivo_partition_total_free(*xdevs.offset(loop_0 as isize));
+            let mut totalused: uint64_t =
+                tivo_partition_total_used(*xdevs.offset(loop_0 as isize)) as
+                    uint64_t;
+            let mut mediasize: uint64_t = 0i32 as uint64_t;
+            let mut appsize: uint64_t = 0i32 as uint64_t;
+            let mut part1: libc::c_uint = 0;
+            let mut part2: libc::c_uint = 0;
+            let mut devn: libc::c_int =
+                if *xdevs.offset(loop_0 as isize) == *drives.offset(0isize) {
+                    0i32
+                } else { 1i32 };
+            if maxfree < (1024i32 * 1024i32 * 2i32) as libc::c_ulonglong {
+                break ;
+            }
+            // Limit the total disk size if set
+            if 0 != maxdisk &&
+                   (maxdisk as libc::c_ulonglong) <
+                       totalfree.wrapping_add(totalused) {
+                if maxdisk as libc::c_ulonglong > totalused {
+                    totalfree =
+                        (maxdisk as libc::c_ulonglong).wrapping_sub(totalused)
+                } else { totalfree = 0i32 as uint64_t }
+                if maxfree > totalfree { maxfree = totalfree }
+            }
+            // Limit the parttion size if needed
+            if 0 != maxmedia && (maxmedia as libc::c_ulonglong) < maxfree {
+                maxfree = maxmedia as uint64_t
+            }
+            // TODO: Change mediasize to this in order to round to the nearest chunk size (TiVo doesn't bother, so neither do we for now)
+			//mediasize = maxfree & ~(minalloc - 1); /* only works when minalloc is base-2, which it might not be now, better to use the next one */
+			//mediasize = maxfree / minalloc * minalloc; /* this math works better for rounding down to the nearest minalloc, but doesn't take into account rounding to 4K boundary for modern disks, which tivo_partition_add will do, move along */
+			//mediasize = (maxfree / minalloc * minalloc) / 8 * 8; /* That should do it for rounding to the nearest chunk size (minalloc), if we must */
+            /* Round down to the nearest 4K boundary because tivo_partition_add does */
+            mediasize =
+                maxfree.wrapping_div(8i32 as
+                                         libc::c_ulonglong).wrapping_mul(8i32
+                                                                             as
+                                                                             libc::c_ulonglong);
+            appsize =
+                mfs_volume_pair_app_size(mfs, mediasize,
+                                         minalloc as libc::c_uint);
+            if totalfree.wrapping_sub(maxfree) < appsize &&
+                   maxfree.wrapping_sub(mediasize) < appsize {
+                //TODO: Change mediasize to this in order to round to the nearest chunk size (TiVo doesn't bother, so neither do we for now)
+				//mediasize = (maxfree - required) & ~(minalloc - 1);; /* only works when minalloc is base-2, which it might not be now, better to use the next one */
+				//mediasize = (maxfree - required) / minalloc * minalloc; /* this math works better for rounding down to the nearest minalloc, but doesn't take into account rounding to 4K boundary for modern disks, which tivo_partition_add will do, move along */
+				//mediasize = ((maxfree - required) / minalloc * minalloc) / 8 * 8; /* That should do it for rounding to the nearest chunk size (minalloc), if we must */
+                /* Round down to the nearest 4K boundary because tivo_partition_add does */
+                mediasize =
+                    maxfree.wrapping_sub(appsize).wrapping_div(8i32 as
+                                                                   libc::c_ulonglong).wrapping_mul(8i32
+                                                                                                       as
+                                                                                                       libc::c_ulonglong);
+                appsize =
+                    mfs_volume_pair_app_size(mfs, mediasize,
+                                             minalloc as libc::c_uint)
+            }
+            sprintf(appname.as_mut_ptr(),
+                    b"MFS application region  %d\x00" as *const u8 as
+                        *const libc::c_char,
+                    *npairs / 2i32 + nparts / 2i32 + 1i32);
+            sprintf(medianame.as_mut_ptr(),
+                    b"MFS media region %d\x00" as *const u8 as
+                        *const libc::c_char,
+                    *npairs / 2i32 + nparts / 2i32 + 1i32);
+            if totalfree.wrapping_sub(maxfree) >= appsize &&
+                   maxfree.wrapping_sub(mediasize) < appsize {
+                part2 =
+                    tivo_partition_add(*xdevs.offset(loop_0 as isize),
+                                       mediasize, 0i32,
+                                       medianame.as_mut_ptr(),
+                                       b"MFS\x00" as *const u8 as
+                                           *const libc::c_char) as
+                        libc::c_uint;
+                part1 =
+                    tivo_partition_add(*xdevs.offset(loop_0 as isize),
+                                       appsize, part2 as libc::c_int,
+                                       appname.as_mut_ptr(),
+                                       b"MFS\x00" as *const u8 as
+                                           *const libc::c_char) as
+                        libc::c_uint;
+                part2 = part2.wrapping_add(1)
+            } else {
+                part1 =
+                    tivo_partition_add(*xdevs.offset(loop_0 as isize),
+                                       appsize, 0i32, appname.as_mut_ptr(),
+                                       b"MFS\x00" as *const u8 as
+                                           *const libc::c_char) as
+                        libc::c_uint;
+                part2 =
+                    tivo_partition_add(*xdevs.offset(loop_0 as isize),
+                                       mediasize, 0i32,
+                                       medianame.as_mut_ptr(),
+                                       b"MFS\x00" as *const u8 as
+                                           *const libc::c_char) as
+                        libc::c_uint
+            }
+            if part1 < 2i32 as libc::c_uint || part2 < 2i32 as libc::c_uint ||
+                   part1 > 16i32 as libc::c_uint ||
+                   part2 > 16i32 as libc::c_uint {
+                if 0 != *npairs {
+                    // We were able to expand, just not in this iteration
+                    break ;
+                } else { return -1i32 }
+            } else {
+                let fresh2 = *npairs;
+                *npairs = *npairs + 1;
+                *pairnums.offset(fresh2 as isize) =
+                    ((devn << 6i32) as libc::c_uint | part1) as libc::c_char;
+                let fresh3 = *npairs;
+                *npairs = *npairs + 1;
+                *pairnums.offset(fresh3 as isize) =
+                    ((devn << 6i32) as libc::c_uint | part2) as libc::c_char;
+                if (*pairs.offset((*npairs - 2i32) as isize)).is_null() ||
+                       (*pairs.offset((*npairs - 1i32) as isize)).is_null() {
+                    if 0 != *npairs {
+                        // We were able to expand, just not in this iteration
+                        break ;
+                    } else { return -1i32 }
+                } else if fill == 0i32 {
+                    // Not asked to create multiple mfs partitions on a drive
+                    break ;
+                } else if totalfree.wrapping_sub(mediasize).wrapping_sub(appsize)
+                              < (minalloc + 4i32) as libc::c_ulonglong {
+                    // Out of space
+                    break ;
+                } else if part2.wrapping_add(2i32 as libc::c_uint) >
+                              16i32 as libc::c_uint {
+                    // Reached the max partitions for this drive
+                    break ;
+                } else {
+                    if !(nparts + *npairs + 2i32 > 12i32) { continue ; }
+                    // Reached the max total partitions
+                    break ;
+                }
+            }
+        }
+        loop_0 += 1
+    }
     return 0i32;
 }
 #[no_mangle]

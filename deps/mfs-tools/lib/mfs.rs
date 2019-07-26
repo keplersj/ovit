@@ -5,31 +5,53 @@
          non_upper_case_globals,
          unused_assignments,
          unused_mut)]
-#![feature(const_raw_ptr_to_usize_cast, extern_types)]
+#![feature(const_raw_ptr_to_usize_cast,
+           extern_types,
+           ptr_wrapping_offset_from)]
 extern crate libc;
 extern "C" {
     pub type log_hdr_s;
     pub type tivo_partition_file;
     #[no_mangle]
-    fn mfsvol_clearerror(hnd: *mut volume_handle);
+    fn mfs_check_crc(data: *mut libc::c_uchar, size: libc::c_uint,
+                     off: libc::c_uint) -> libc::c_uint;
     #[no_mangle]
-    fn mfsvol_has_error(hnd: *mut volume_handle) -> libc::c_int;
+    fn mfs_update_crc(data: *mut libc::c_uchar, size: libc::c_uint,
+                      off: libc::c_uint);
     #[no_mangle]
-    fn mfsvol_strerror(hnd: *mut volume_handle, str: *mut libc::c_char)
-     -> libc::c_int;
+    fn mfs_load_zone_maps(hnd: *mut mfs_handle) -> libc::c_int;
     #[no_mangle]
-    fn mfsvol_perror(hnd: *mut volume_handle, str: *mut libc::c_char);
+    fn mfsvol_volume_size(hnd: *mut volume_handle, sector: uint64_t)
+     -> uint64_t;
+    #[no_mangle]
+    fn mfsvol_volume_set_size(hnd: *mut volume_handle) -> uint64_t;
+    #[no_mangle]
+    fn mfsvol_read_data(hnd: *mut volume_handle, buf: *mut libc::c_void,
+                        sector: uint64_t, count: uint32_t) -> libc::c_int;
+    #[no_mangle]
+    fn mfsvol_write_data(hnd: *mut volume_handle, buf: *mut libc::c_void,
+                         sector: uint64_t, count: uint32_t) -> libc::c_int;
+    #[no_mangle]
+    fn mfsvol_cleanup(hnd: *mut volume_handle);
     #[no_mangle]
     fn mfsvol_init(hda: *const libc::c_char, hdb: *const libc::c_char)
      -> *mut volume_handle;
     #[no_mangle]
-    fn mfsvol_cleanup(hnd: *mut volume_handle);
+    fn mfsvol_perror(hnd: *mut volume_handle, str: *mut libc::c_char);
     #[no_mangle]
-    fn mfs_load_zone_maps(hnd: *mut mfs_handle) -> libc::c_int;
+    fn mfsvol_strerror(hnd: *mut volume_handle, str: *mut libc::c_char)
+     -> libc::c_int;
+    #[no_mangle]
+    fn mfsvol_has_error(hnd: *mut volume_handle) -> libc::c_int;
+    #[no_mangle]
+    fn mfsvol_clearerror(hnd: *mut volume_handle);
     #[no_mangle]
     fn mfs_cleanup_zone_maps(mfshnd: *mut mfs_handle);
     #[no_mangle]
     fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong)
+     -> *mut libc::c_void;
+    #[no_mangle]
+    fn memcpy(_: *mut libc::c_void, _: *const libc::c_void, _: libc::c_ulong)
      -> *mut libc::c_void;
     #[no_mangle]
     fn strcspn(_: *const libc::c_char, _: *const libc::c_char)
@@ -41,6 +63,9 @@ extern "C" {
     fn bzero(_: *mut libc::c_void, _: libc::c_ulong);
     #[no_mangle]
     fn malloc(_: libc::c_ulong) -> *mut libc::c_void;
+    #[no_mangle]
+    fn sprintf(_: *mut libc::c_char, _: *const libc::c_char, _: ...)
+     -> libc::c_int;
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -52,15 +77,17 @@ pub struct mfs_handle {
     pub current_log: *mut log_hdr_s,
     pub inode_log_type: libc::c_int,
     pub is_64: libc::c_int,
-    pub bootcycle: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub lastlogsync: libc::c_int,
-    pub lastlogcommit: libc::c_int,
+    pub bootcycle: uint32_t,
+    pub bootsecs: uint32_t,
+    pub lastlogsync: uint32_t,
+    pub lastlogcommit: uint32_t,
     pub err_msg: *mut libc::c_char,
-    pub err_arg1: libc::c_int,
-    pub err_arg2: libc::c_int,
-    pub err_arg3: libc::c_int,
+    pub err_arg1: int64_t,
+    pub err_arg2: int64_t,
+    pub err_arg3: int64_t,
 }
+pub type int64_t = libc::c_longlong;
+pub type uint32_t = libc::c_uint;
 /* Linked lists of zone maps for a certain type of map */
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -97,10 +124,10 @@ pub type bitmap_header = bitmap_header_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct bitmap_header_s {
-    pub nbits: libc::c_int,
-    pub freeblocks: libc::c_int,
-    pub last: libc::c_int,
-    pub nints: libc::c_int,
+    pub nbits: uint32_t,
+    pub freeblocks: uint32_t,
+    pub last: uint32_t,
+    pub nints: uint32_t,
 }
 pub type zone_header = zone_header_u;
 #[derive ( Copy , Clone )]
@@ -115,24 +142,24 @@ pub type zone_header_64 = zone_header_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C, packed)]
 pub struct zone_header_64_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub next_sector: libc::c_int,
-    pub next_sbackup: libc::c_int,
-    pub next_size: libc::c_int,
-    pub first: libc::c_int,
-    pub last: libc::c_int,
-    pub size: libc::c_int,
-    pub free: libc::c_int,
-    pub next_length: libc::c_int,
-    pub length: libc::c_int,
-    pub min: libc::c_int,
-    pub next_min: libc::c_int,
-    pub logstamp: libc::c_int,
+    pub sector: uint64_t,
+    pub sbackup: uint64_t,
+    pub next_sector: uint64_t,
+    pub next_sbackup: uint64_t,
+    pub next_size: uint64_t,
+    pub first: uint64_t,
+    pub last: uint64_t,
+    pub size: uint64_t,
+    pub free: uint64_t,
+    pub next_length: uint32_t,
+    pub length: uint32_t,
+    pub min: uint32_t,
+    pub next_min: uint32_t,
+    pub logstamp: uint32_t,
     pub type_0: zone_type,
-    pub checksum: libc::c_int,
-    pub zero: libc::c_int,
-    pub num: libc::c_int,
+    pub checksum: uint32_t,
+    pub zero: uint32_t,
+    pub num: uint32_t,
 }
 pub type zone_type = zone_type_e;
 pub type zone_type_e = libc::c_uint;
@@ -141,43 +168,44 @@ pub const ztMax: zone_type_e = 3;
 pub const ztMedia: zone_type_e = 2;
 pub const ztApplication: zone_type_e = 1;
 pub const ztInode: zone_type_e = 0;
+pub type uint64_t = libc::c_ulonglong;
 /* addresses, pointing to mmapped */
 	/* memory from /tmp/fsmem for bitmaps */
 pub type zone_header_32 = zone_header_32_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_header_32_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
+    pub sector: uint32_t,
+    pub sbackup: uint32_t,
+    pub length: uint32_t,
     pub next: zone_map_ptr_32,
     pub type_0: zone_type,
-    pub logstamp: libc::c_int,
-    pub checksum: libc::c_int,
-    pub first: libc::c_int,
-    pub last: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
-    pub free: libc::c_int,
-    pub zero: libc::c_int,
-    pub num: libc::c_int,
+    pub logstamp: uint32_t,
+    pub checksum: uint32_t,
+    pub first: uint32_t,
+    pub last: uint32_t,
+    pub size: uint32_t,
+    pub min: uint32_t,
+    pub free: uint32_t,
+    pub zero: uint32_t,
+    pub num: uint32_t,
 }
 pub type zone_map_ptr_32 = zone_map_ptr_32_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_ptr_32_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
+    pub sector: uint32_t,
+    pub sbackup: uint32_t,
+    pub length: uint32_t,
+    pub size: uint32_t,
+    pub min: uint32_t,
 }
 /* Head of zone maps linked list, contains totals as well */
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_head {
-    pub size: libc::c_int,
-    pub free: libc::c_int,
+    pub size: uint64_t,
+    pub free: uint64_t,
     pub next: *mut zone_map,
 }
 pub type volume_header = volume_header_u;
@@ -191,75 +219,69 @@ pub type volume_header_64 = volume_header_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_header_64_s {
-    pub magicLSB: libc::c_int,
-    pub magicMSB: libc::c_int,
-    pub checksum: libc::c_int,
-    pub off0c: libc::c_int,
-    pub root_fsid: libc::c_int,
-    pub off14: libc::c_int,
-    pub firstpartsize: libc::c_int,
-    pub off1c: libc::c_int,
-    pub off20: libc::c_int,
+    pub magicLSB: uint32_t,
+    pub magicMSB: uint32_t,
+    pub checksum: uint32_t,
+    pub off0c: uint32_t,
+    pub root_fsid: uint32_t,
+    pub off14: uint32_t,
+    pub firstpartsize: uint32_t,
+    pub off1c: uint32_t,
+    pub off20: uint32_t,
     pub partitionlist: [libc::c_char; 132],
-    pub total_sectors: libc::c_int,
-    pub logstart: libc::c_int,
-    pub volhdrlogstamp: libc::c_int,
-    pub unkstart: libc::c_int,
-    pub offc8: libc::c_int,
-    pub unkstamp: libc::c_int,
+    pub total_sectors: uint64_t,
+    pub logstart: uint64_t,
+    pub volhdrlogstamp: uint64_t,
+    pub unkstart: uint64_t,
+    pub offc8: uint32_t,
+    pub unkstamp: uint32_t,
     pub zonemap: zone_map_ptr_64,
-    pub unknsectors: libc::c_int,
-    pub lognsectors: libc::c_int,
-    pub off100: libc::c_int,
-    pub next_fsid: libc::c_int,
-    pub bootcycles: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub off110: libc::c_int,
-    pub off114: libc::c_int,
+    pub unknsectors: uint32_t,
+    pub lognsectors: uint32_t,
+    pub off100: uint32_t,
+    pub next_fsid: uint32_t,
+    pub bootcycles: uint32_t,
+    pub bootsecs: uint32_t,
+    pub off110: uint32_t,
+    pub off114: uint32_t,
 }
 pub type zone_map_ptr_64 = zone_map_ptr_64_s;
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct zone_map_ptr_64_s {
-    pub sector: libc::c_int,
-    pub sbackup: libc::c_int,
-    pub length: libc::c_int,
-    pub size: libc::c_int,
-    pub min: libc::c_int,
+    pub sector: uint64_t,
+    pub sbackup: uint64_t,
+    pub length: uint64_t,
+    pub size: uint64_t,
+    pub min: uint64_t,
 }
 pub type volume_header_32 = volume_header_32_s;
-// mfs filesystem database consistent 
-//(GSOD) Filesystem is inconsistent - cannot mount!  -  Filesystem is inconsistent, will attempt repair!          - Triggered by kickstart 5 7, and others
-//(GSOD) Filesystem is inconsistent - cannot mount!  -  Filesystem logs are bad - log roll-forward inhibited!     - Triggered by ???
-//(GSOD) Database is inconsistent - cannot mount!    -  fsfix:  mounted MFS volume, starting consistency checks.  - Triggered when a THD beackup with eSata restored to a single drive, without fixing off0c/off14 and trying to remove eSata from UI
-// Clean up objects with missing tystreams                                                                        - Triggered after a GSOD encounters bad refcounts or missing media tystreams (eg, truncated restore)
-// bit is set when mfs is 64-bit
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_header_32_s {
-    pub magicLSB: libc::c_int,
-    pub magicMSB: libc::c_int,
-    pub checksum: libc::c_int,
-    pub off0c: libc::c_int,
-    pub root_fsid: libc::c_int,
-    pub off14: libc::c_int,
-    pub firstpartsize: libc::c_int,
-    pub off1c: libc::c_int,
-    pub off20: libc::c_int,
+    pub magicLSB: uint32_t,
+    pub magicMSB: uint32_t,
+    pub checksum: uint32_t,
+    pub off0c: uint32_t,
+    pub root_fsid: uint32_t,
+    pub off14: uint32_t,
+    pub firstpartsize: uint32_t,
+    pub off1c: uint32_t,
+    pub off20: uint32_t,
     pub partitionlist: [libc::c_char; 128],
-    pub total_sectors: libc::c_int,
-    pub offa8: libc::c_int,
-    pub logstart: libc::c_int,
-    pub lognsectors: libc::c_int,
-    pub volhdrlogstamp: libc::c_int,
-    pub unkstart: libc::c_int,
-    pub unksectors: libc::c_int,
-    pub unkstamp: libc::c_int,
+    pub total_sectors: uint32_t,
+    pub offa8: uint32_t,
+    pub logstart: uint32_t,
+    pub lognsectors: uint32_t,
+    pub volhdrlogstamp: uint32_t,
+    pub unkstart: uint32_t,
+    pub unksectors: uint32_t,
+    pub unkstamp: uint32_t,
     pub zonemap: zone_map_ptr_32,
-    pub next_fsid: libc::c_int,
-    pub bootcycles: libc::c_int,
-    pub bootsecs: libc::c_int,
-    pub offe4: libc::c_int,
+    pub next_fsid: uint32_t,
+    pub bootcycles: uint32_t,
+    pub bootsecs: uint32_t,
+    pub offe4: uint32_t,
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -269,9 +291,9 @@ pub struct volume_handle {
     pub hda: *mut libc::c_char,
     pub hdb: *mut libc::c_char,
     pub err_msg: *mut libc::c_char,
-    pub err_arg1: libc::c_int,
-    pub err_arg2: libc::c_int,
-    pub err_arg3: libc::c_int,
+    pub err_arg1: int64_t,
+    pub err_arg2: int64_t,
+    pub err_arg3: int64_t,
 }
 /* Size that TiVo rounds the partitions down to whole increments of. */
 /* Flags for vol_flags below */
@@ -291,9 +313,9 @@ pub const vwNormal: volume_write_mode_e = 0;
 pub struct volume_info {
     pub file: *mut tivo_partition_file,
     pub vol_flags: libc::c_int,
-    pub start: libc::c_int,
-    pub sectors: libc::c_int,
-    pub offset: libc::c_int,
+    pub start: uint64_t,
+    pub sectors: uint64_t,
+    pub offset: uint64_t,
     pub mem_blocks: *mut volume_mem_data,
     pub next: *mut volume_info,
 }
@@ -301,10 +323,38 @@ pub struct volume_info {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct volume_mem_data {
-    pub start: libc::c_int,
-    pub sectors: libc::c_int,
+    pub start: uint64_t,
+    pub sectors: uint64_t,
     pub next: *mut volume_mem_data,
     pub data: [libc::c_uchar; 0],
+}
+pub type size_t = libc::c_ulong;
+#[inline]
+unsafe extern "C" fn Endian32_Swap(mut var: uint32_t) -> uint32_t {
+    var = var << 16i32 | var >> 16i32;
+    var = (var & 0xff00ff00u32) >> 8i32 | var << 8i32 & 0xff00ff00u32;
+    return var;
+}
+#[inline]
+unsafe extern "C" fn Endian64_Swap(mut var: uint64_t) -> uint64_t {
+    var = var >> 32i32 | var << 32i32;
+    var =
+        var >> 16i32 & 0xffff0000ffffi64 as libc::c_ulonglong |
+            (var & 0xffff0000ffffi64 as libc::c_ulonglong) << 16i32;
+    var =
+        var >> 8i32 & 0xff00ff00ff00ffi64 as libc::c_ulonglong |
+            (var & 0xff00ff00ff00ffi64 as libc::c_ulonglong) << 8i32;
+    return var;
+}
+#[inline]
+unsafe extern "C" fn intswap32(mut n: uint32_t) -> uint32_t {
+    if mfsLSB == 0i32 { return n }
+    return Endian32_Swap(n);
+}
+#[inline]
+unsafe extern "C" fn intswap64(mut n: uint64_t) -> uint64_t {
+    if mfsLSB == 0i32 { return n }
+    return Endian64_Swap(n);
 }
 // #ifdef HAVE_ERRNO_H
 // #endif
@@ -317,13 +367,75 @@ pub static mut tivo_devnames: [*mut libc::c_char; 2] =
 pub static mut mfsLSB: libc::c_int = 0i32;
 #[no_mangle]
 pub static mut partLSB: libc::c_int = 0i32;
+/* ************************************/
+/* Write the volume header back out. */
+#[no_mangle]
+pub unsafe extern "C" fn mfs_write_volume_header(mut mfshnd: *mut mfs_handle)
+ -> libc::c_int {
+    let mut buf: [libc::c_uchar; 512] = [0; 512];
+    memset(buf.as_mut_ptr() as *mut libc::c_void, 0i32,
+           ::std::mem::size_of::<[libc::c_uchar; 512]>() as libc::c_ulong);
+    if 0 != (*mfshnd).is_64 {
+        mfs_update_crc(&mut (*mfshnd).vol_hdr.v64 as *mut volume_header_64 as
+                           *mut libc::c_uchar,
+                       ::std::mem::size_of::<volume_header_64>() as
+                           libc::c_ulong as libc::c_uint,
+                       (&mut (*mfshnd).vol_hdr.v64.checksum as *mut uint32_t
+                            as
+                            *mut libc::c_uint).wrapping_offset_from(&mut (*mfshnd).vol_hdr.v64
+                                                                        as
+                                                                        *mut volume_header_64
+                                                                        as
+                                                                        *mut libc::c_uint)
+                           as libc::c_long as libc::c_uint);
+    } else {
+        mfs_update_crc(&mut (*mfshnd).vol_hdr.v32 as *mut volume_header_32 as
+                           *mut libc::c_uchar,
+                       ::std::mem::size_of::<volume_header_32>() as
+                           libc::c_ulong as libc::c_uint,
+                       (&mut (*mfshnd).vol_hdr.v32.checksum as *mut uint32_t
+                            as
+                            *mut libc::c_uint).wrapping_offset_from(&mut (*mfshnd).vol_hdr.v32
+                                                                        as
+                                                                        *mut volume_header_32
+                                                                        as
+                                                                        *mut libc::c_uint)
+                           as libc::c_long as libc::c_uint);
+    }
+    memcpy(buf.as_mut_ptr() as *mut libc::c_void,
+           &mut (*mfshnd).vol_hdr as *mut volume_header as
+               *const libc::c_void,
+           ::std::mem::size_of::<volume_header>() as libc::c_ulong);
+    if mfsvol_write_data((*mfshnd).vols,
+                         buf.as_mut_ptr() as *mut libc::c_void,
+                         0i32 as uint64_t, 1i32 as uint32_t) != 512i32 {
+        (*mfshnd).err_msg =
+            b"%s writing volume header\x00" as *const u8 as
+                *const libc::c_char as *mut libc::c_char;
+        return -1i32
+    }
+    if mfsvol_write_data((*mfshnd).vols,
+                         buf.as_mut_ptr() as *mut libc::c_void,
+                         mfsvol_volume_size((*mfshnd).vols,
+                                            0i32 as
+                                                uint64_t).wrapping_sub(1i32 as
+                                                                           libc::c_ulonglong),
+                         1i32 as uint32_t) != 512i32 {
+        (*mfshnd).err_msg =
+            b"%s writing volume header\x00" as *const u8 as
+                *const libc::c_char as *mut libc::c_char;
+        return -1i32
+    }
+    return 512i32;
+}
 /* **********************************************************************/
 /* Return the list of partitions from the volume header.  That is all. */
 #[no_mangle]
 pub unsafe extern "C" fn mfs_partition_list(mut mfshnd: *mut mfs_handle)
  -> *mut libc::c_char {
-    0 != (*mfshnd).is_64;
-    panic!("Reached end of non-void function without returning");
+    if 0 != (*mfshnd).is_64 {
+        return (*mfshnd).vol_hdr.v64.partitionlist.as_mut_ptr()
+    } else { return (*mfshnd).vol_hdr.v32.partitionlist.as_mut_ptr() };
 }
 /* *******************************/
 /* Wrapper for first init case. */
@@ -359,6 +471,8 @@ pub unsafe extern "C" fn mfs_strerror(mut mfshnd: *mut mfs_handle,
                                       mut str: *mut libc::c_char)
  -> libc::c_int {
     if !(*mfshnd).err_msg.is_null() {
+        sprintf(str, (*mfshnd).err_msg, (*mfshnd).err_arg1,
+                (*mfshnd).err_arg2, (*mfshnd).err_arg3);
     } else { return mfsvol_strerror((*mfshnd).vols, str) }
     return 1i32;
 }
@@ -375,6 +489,9 @@ pub unsafe extern "C" fn mfs_has_error(mut mfshnd: *mut mfs_handle)
 #[no_mangle]
 pub unsafe extern "C" fn mfs_clearerror(mut mfshnd: *mut mfs_handle) {
     (*mfshnd).err_msg = 0 as *mut libc::c_char;
+    (*mfshnd).err_arg1 = 0i32 as int64_t;
+    (*mfshnd).err_arg2 = 0i32 as int64_t;
+    (*mfshnd).err_arg3 = 0i32 as int64_t;
     if !(*mfshnd).vols.is_null() { mfsvol_clearerror((*mfshnd).vols); };
 }
 /* ***********************************************/

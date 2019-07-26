@@ -8,9 +8,14 @@
 extern crate libc;
 extern "C" {
     #[no_mangle]
+    fn tivo_partition_size(file: *mut tpFILE) -> uint64_t;
+    #[no_mangle]
+    fn tivo_partition_offset(file: *mut tpFILE) -> uint64_t;
+    #[no_mangle]
     fn memset(_: *mut libc::c_void, _: libc::c_int, _: libc::c_ulong)
      -> *mut libc::c_void;
 }
+pub type uint64_t = libc::c_ulonglong;
 /* there is more stuff after this that we don't need */
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -29,7 +34,7 @@ pub union C2RustUnnamed {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct C2RustUnnamed_0 {
-    pub sectors: libc::c_int,
+    pub sectors: uint64_t,
 }
 #[derive ( Copy , Clone )]
 #[repr(C)]
@@ -41,8 +46,8 @@ pub struct C2RustUnnamed_1 {
 #[derive ( Copy , Clone )]
 #[repr(C)]
 pub struct tivo_partition {
-    pub sectors: libc::c_int,
-    pub start: libc::c_int,
+    pub sectors: uint64_t,
+    pub start: uint64_t,
     pub refs: libc::c_uint,
     pub name: *mut libc::c_char,
     pub type_0: *mut libc::c_char,
@@ -58,7 +63,7 @@ pub struct tivo_partition_table {
     pub vol_flags: libc::c_int,
     pub count: libc::c_int,
     pub refs: libc::c_int,
-    pub devsize: libc::c_int,
+    pub devsize: uint64_t,
     pub allocated: libc::c_int,
     pub partitions: *mut tivo_partition,
     pub next: *mut tivo_partition_table,
@@ -80,7 +85,12 @@ unsafe extern "C" fn _tivo_partition_fd(mut file: *mut tpFILE)
 #[inline]
 unsafe extern "C" fn _tivo_partition_swab(mut file: *mut tpFILE)
  -> libc::c_int {
-    panic!("Reached end of non-void function without returning");
+    return (((*file).tptype as libc::c_uint ==
+                 pDIRECT as libc::c_int as libc::c_uint ||
+                 (*file).tptype as libc::c_uint ==
+                     pDIRECTFILE as libc::c_int as libc::c_uint) &&
+                0 != (*(*file).extra.direct.pt).vol_flags & 0x4i32) as
+               libc::c_int;
 }
 // #ifdef HAVE_ERRNO_H
 // #endif

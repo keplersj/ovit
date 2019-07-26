@@ -12,6 +12,18 @@ extern "C" {
     #[no_mangle]
     static mut mfsLSB: libc::c_int;
 }
+pub type uint32_t = libc::c_uint;
+#[inline]
+unsafe extern "C" fn Endian32_Swap(mut var: uint32_t) -> uint32_t {
+    var = var << 16i32 | var >> 16i32;
+    var = (var & 0xff00ff00u32) >> 8i32 | var << 8i32 & 0xff00ff00u32;
+    return var;
+}
+#[inline]
+unsafe extern "C" fn intswap32(mut n: uint32_t) -> uint32_t {
+    if mfsLSB == 0i32 { return n }
+    return Endian32_Swap(n);
+}
 /* ANSI X3.66 CRC32 checksum */
 /* CRC polynomial 0xedb88320 */
 static mut crc32tab: [libc::c_ulong; 256] =
@@ -210,7 +222,7 @@ pub unsafe extern "C" fn mfs_compute_crc(mut data: *mut libc::c_uchar,
         size = size.wrapping_sub(1);
         off = off.wrapping_sub(1)
     }
-    panic!("Reached end of non-void function without returning");
+    return intswap32(CRC);
 }
 /* *****************************/
 /* Verify the CRC is correct. */
