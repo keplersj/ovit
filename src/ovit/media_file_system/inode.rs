@@ -194,11 +194,23 @@ impl Iterator for MFSINodeIter {
             };
 
             // self.next_inode_sector += 1;
-            self.next_inode_sector += 2; //Every exists on the drive twice
+            self.next_inode_sector += 2; //Every inode exists on the drive twice
 
             Some(inode)
         } else {
             None
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = (self.last_inode_sector as usize - self.next_inode_sector as usize) / 2;
+        (size, Some(size))
+    }
+}
+
+impl ExactSizeIterator for MFSINodeIter {
+    // We can easily calculate the remaining number of iterations.
+    fn len(&self) -> usize {
+        (self.last_inode_sector as usize - self.next_inode_sector as usize) / 2
     }
 }
