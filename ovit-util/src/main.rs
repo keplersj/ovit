@@ -1,7 +1,6 @@
 mod ovit;
 
 extern crate clap;
-extern crate rayon;
 extern crate ovit_lib;
 extern crate tivo_media_file_system;
 
