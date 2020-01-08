@@ -2,10 +2,10 @@ extern crate apple_partition_map;
 extern crate tivo_media_file_system;
 
 use apple_partition_map::ApplePartitionMap;
-use tivo_media_file_system::{MFSVolumeHeader, MFSZoneMap};
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
+use tivo_media_file_system::{MFSVolumeHeader, MFSZoneMap};
 
 pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;

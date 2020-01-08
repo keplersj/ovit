@@ -31,6 +31,32 @@ fn main() {
 
             println!("TiVo Drive Loaded!");
 
+            println!();
+
+            println!("Source: {}", input_path);
+            println!(
+                "Partitions Count: {}",
+                tivo_drive.partition_map.partitions.len()
+            );
+            println!(
+                "INode Count: {}",
+                tivo_drive.zonemap.inode_iter().unwrap().len()
+            );
+        }
+        ("experiment", Some(sub_match)) => {
+            // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
+            // required we could have used an 'if let' to conditionally get the value)
+            let input_path = sub_match.value_of("INPUT").unwrap();
+
+            println!("Loading TiVo Drive");
+
+            let mut tivo_drive =
+                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive");
+
+            println!("TiVo Drive Loaded!");
+
+            println!();
+
             let inode_sample: Vec<tivo_media_file_system::MFSINode> = tivo_drive
                 .zonemap
                 .inode_iter()
