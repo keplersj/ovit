@@ -3,6 +3,7 @@ mod ovit;
 extern crate clap;
 extern crate rayon;
 extern crate ovit_lib;
+extern crate tivo_media_file_system;
 
 use clap::{App, Arg, SubCommand};
 use ovit_lib::get_blocks_from_file;
@@ -31,11 +32,11 @@ fn main() {
 
             println!("TiVo Drive Loaded!");
 
-            let inode_sample: Vec<ovit::media_file_system::MFSINode> = tivo_drive
+            let inode_sample: Vec<tivo_media_file_system::MFSINode> = tivo_drive
                 .zonemap
                 .inode_iter()
                 .unwrap()
-                .filter(|inode| inode.r#type == ovit::media_file_system::MFSINodeType::Dir)
+                .filter(|inode| inode.r#type == tivo_media_file_system::MFSINodeType::Dir)
                 .filter(|inode| !inode.datablocks.is_empty())
                 .take(5)
                 .collect();

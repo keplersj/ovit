@@ -6,8 +6,7 @@ edition = "2018"
 
 [dependencies]
 clap = "2.33.0"
-nom = "5.0.1"
-chrono = "0.4.7"
 rayon = "1.1.0"
 apple-partition-map = { path = "../apple-partition-map" }
 ovit-lib = { path = "../ovit-lib" }
+tivo-media-file-system = { path = "../tivo-media-file-system" }

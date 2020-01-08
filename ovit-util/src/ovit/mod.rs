@@ -1,10 +1,9 @@
 extern crate apple_partition_map;
 extern crate ovit_lib;
-
-pub mod media_file_system;
+extern crate tivo_media_file_system;
 
 use apple_partition_map::ApplePartitionMap;
-use media_file_system::{MFSVolumeHeader, MFSZoneMap};
+use tivo_media_file_system::{MFSVolumeHeader, MFSZoneMap};
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;

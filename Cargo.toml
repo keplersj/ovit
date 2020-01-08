@@ -3,5 +3,7 @@
 members = [
     "apple-partition-map",
     "ovit-lib",
+    "tivo-media-file-system",
+
     "ovit-util",
 ]
