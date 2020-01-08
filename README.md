@@ -14,23 +14,23 @@ The cloned ISO is 40 Gigabytes large (matching the original hard drive) and cont
 
 ### Apple Partition Map
 
-The hard drive was formatted with an Apple Partition Map in BigEndian format. The partition map at the start of the drive contains the following information about the drive:
+The hard drive was formatted with an Apple Partition Map in BigEndian format. Running `cargo run -p ovit-tools -- partitions tivo_hdd.iso` shows the following about the [partition map](https://en.wikipedia.org/wiki/Apple_Partition_Map) at the start of the cloned TiVo drive:
 
-| Partition Name             | Partition Type        |
-| -------------------------- | --------------------- |
-| `Apple`                    | `Apple_partition_map` |
-| `Bootstrap 1`              | `Image`               |
-| `Kernel 1`                 | `Image`               |
-| `Root 1`                   | `Ext2`                |
-| `Bootstrap 2`              | `Image`               |
-| `Kernel 2`                 | `Image`               |
-| `Root 2`                   | `Ext2`                |
-| `Linux swap`               | `Swap`                |
-| `/var`                     | `Ext2`                |
-| `MFS application region`   | `MFS`                 |
-| `MFS media region`         | `MFS`                 |
-| `MFS application region 2` | `MFS`                 |
-| `MFS media region 2`       | `MFS`                 |
+| Partition Total | Starting Sector | Sector Size | Name                       | Type                  | Starting Data Sector | Data Sectors | Status   |
+| --------------- | --------------- | ----------- | -------------------------- | --------------------- | -------------------- | ------------ | -------- |
+| 13              | 1               | 63          | `Apple`                    | `Apple_partition_map` | 0                    | 63           | 0x000033 |
+| 13              | 43009349        | 4096        | `Bootstrap 1`              | `Image`               | 0                    | 4096         | 0x000033 |
+| 13              | 43013445        | 4096        | `Kernel 1`                 | `Image`               | 0                    | 4096         | 0x000033 |
+| 13              | 43017541        | 262144      | `Root 1`                   | `Ext2`                | 0                    | 262144       | 0x000033 |
+| 13              | 43279685        | 4096        | `Bootstrap 2`              | `Image`               | 0                    | 4096         | 0x000033 |
+| 13              | 43283781        | 4096        | `Kernel 2`                 | `Image`               | 0                    | 4096         | 0x000033 |
+| 13              | 43287877        | 262144      | `Root 2`                   | `Ext2`                | 0                    | 262144       | 0x000033 |
+| 13              | 43550021        | 131072      | `Linux swap`               | `Swap`                | 0                    | 131072       | 0x000033 |
+| 13              | 43681093        | 262144      | `/var`                     | `Ext2`                | 0                    | 262144       | 0x000033 |
+| 13              | 43943237        | 1048576     | `MFS application region`   | `MFS`                 | 0                    | 1048576      | 0x000033 |
+| 13              | 46040389        | 32158361    | `MFS media region`         | `MFS`                 | 0                    | 32158361     | 0x000133 |
+| 13              | 44991813        | 1048576     | `MFS application region 2` | `MFS`                 | 0                    | 1048576      | 0x000033 |
+| 13              | 64              | 43009285    | `MFS media region 2`       | `MFS`                 | 0                    | 43009285     | 0x000133 |
 
 ### Media File System
 

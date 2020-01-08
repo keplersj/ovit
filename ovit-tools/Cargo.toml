@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 clap = "2.33.0"
+prettytable-rs = "0.8.0"
 apple-partition-map = { path = "../apple-partition-map" }
 ovit-util = { path = "../ovit-util" }
 tivo-media-file-system = { path = "../tivo-media-file-system" }

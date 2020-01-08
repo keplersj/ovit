@@ -2,10 +2,13 @@ mod ovit;
 
 extern crate clap;
 extern crate ovit_util;
+#[macro_use]
+extern crate prettytable;
 extern crate tivo_media_file_system;
 
 use clap::{App, Arg, SubCommand};
 use ovit_util::get_blocks_from_file;
+use prettytable::Table;
 use std::convert::TryInto;
 
 fn main() {
@@ -14,6 +17,9 @@ fn main() {
         .author("Kepler Sticka-Jones <kepler@stickajones.org>")
         .about("An experimental binary to retrieve MPEG streams from a TiVo hard drive (image) and do other TiVo drive related things.")
         .subcommand(SubCommand::with_name("info").arg(Arg::with_name("INPUT")
+            .help("The drive image to read from")
+            .required(true)))
+        .subcommand(SubCommand::with_name("partitions").arg(Arg::with_name("INPUT")
             .help("The drive image to read from")
             .required(true)))
         .get_matches();
@@ -42,6 +48,43 @@ fn main() {
                 "INode Count: {}",
                 tivo_drive.zonemap.inode_iter().unwrap().len()
             );
+        }
+        ("partitions", Some(sub_match)) => {
+            // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
+            // required we could have used an 'if let' to conditionally get the value)
+            let input_path = sub_match.value_of("INPUT").unwrap();
+
+            let tivo_drive =
+                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive");
+
+            // Create the table
+            let mut table = Table::new();
+
+            table.add_row(row![
+                "Partition Total",
+                "Starting Sector",
+                "Sector Size",
+                "Name",
+                "Type",
+                "Starting Data Sector",
+                "Data Sectors",
+                "Status"
+            ]);
+            for partition in tivo_drive.partition_map.partitions {
+                table.add_row(row![
+                    partition.partitions_total,
+                    partition.starting_sector,
+                    partition.sector_size,
+                    partition.name,
+                    partition.r#type,
+                    partition.starting_data_sector,
+                    partition.data_sectors,
+                    format!("{:#08X}", partition.status)
+                ]);
+            }
+
+            // Print the table to stdout
+            table.printstd();
         }
         ("experiment", Some(sub_match)) => {
             // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
@@ -86,10 +129,6 @@ fn main() {
 
             println!("{:X?}", block32);
             println!("{}", String::from_utf8_lossy(&block));
-        }
-        ("schema", Some(_sub_matches)) => {
-            // let schema_contents = include_str!("schema.txt");
-            println!("Not interacting with the schema right now!");
         }
         _ => {}
     }
