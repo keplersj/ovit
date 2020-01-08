@@ -1,7 +1,6 @@
 extern crate nom;
-extern crate ovit_lib;
+extern crate ovit_util;
 
-use ovit_lib::get_blocks_from_drive_and_correct_order;
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,
@@ -9,6 +8,7 @@ use nom::{
     number::streaming::be_u32,
     Err, IResult,
 };
+use ovit_util::get_blocks_from_drive_and_correct_order;
 use std::fs::File;
 
 fn string(size: usize, input: &[u8]) -> IResult<&[u8], String> {

@@ -1,0 +1,11 @@
+[package]
+name = "ovit-tools"
+version = "0.0.0-development"
+authors = ["Kepler Sticka-Jones <kepler@stickajones.org>"]
+edition = "2018"
+
+[dependencies]
+clap = "2.33.0"
+apple-partition-map = { path = "../apple-partition-map" }
+ovit-util = { path = "../ovit-util" }
+tivo-media-file-system = { path = "../tivo-media-file-system" }

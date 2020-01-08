@@ -1,8 +1,7 @@
 extern crate chrono;
 extern crate nom;
-extern crate ovit_lib;
+extern crate ovit_util;
 
-use ovit_lib::get_block_from_file;
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     bytes::streaming::{tag, take},
@@ -11,6 +10,7 @@ use nom::{
     number::streaming::{be_u16, be_u32, be_u8},
     Err, IResult,
 };
+use ovit_util::get_block_from_file;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum MFSINodeType {

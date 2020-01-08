@@ -1,15 +1,15 @@
-extern crate nom;
 extern crate apple_partition_map;
-extern crate ovit_lib;
+extern crate nom;
+extern crate ovit_util;
 
 use apple_partition_map::Partition;
-use ovit_lib::get_block_from_drive_and_correct_order;
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,
     number::streaming::be_u32,
     Err, IResult,
 };
+use ovit_util::get_block_from_drive_and_correct_order;
 use std::fs::File;
 
 fn string(input: &[u8]) -> IResult<&[u8], String> {

@@ -1,5 +1,4 @@
 extern crate apple_partition_map;
-extern crate ovit_lib;
 extern crate tivo_media_file_system;
 
 use apple_partition_map::ApplePartitionMap;

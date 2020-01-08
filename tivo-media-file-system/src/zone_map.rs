@@ -1,9 +1,9 @@
 extern crate nom;
-extern crate ovit_lib;
+extern crate ovit_util;
 
 use super::MFSINodeIter;
-use ovit_lib::get_blocks_from_file;
 use nom::{bytes::streaming::tag, error::ErrorKind, number::streaming::be_u32, Err, IResult};
+use ovit_util::get_blocks_from_file;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MFSZoneType {

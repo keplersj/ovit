@@ -10,4 +10,4 @@ edition = "2018"
 nom = "5.1.0"
 chrono = "0.4.10"
 apple-partition-map = { path = "../apple-partition-map" }
-ovit-lib = { path = "../ovit-lib" }
+ovit-util = { path = "../ovit-util" }

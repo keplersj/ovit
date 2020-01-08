@@ -1,11 +1,11 @@
 mod ovit;
 
 extern crate clap;
-extern crate ovit_lib;
+extern crate ovit_util;
 extern crate tivo_media_file_system;
 
 use clap::{App, Arg, SubCommand};
-use ovit_lib::get_blocks_from_file;
+use ovit_util::get_blocks_from_file;
 use std::convert::TryInto;
 
 fn main() {
