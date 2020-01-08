@@ -39,7 +39,11 @@ fn main() {
                 .help("Sets how many INodes to read")
                 .takes_value(true)
                 .required(false)
-                .default_value("25")))
+                .default_value("25"))
+            .arg(Arg::with_name("data")
+                .short("d")
+                .long("display-data")
+                .required(false)))
         .get_matches();
 
     match matches.subcommand() {
@@ -196,6 +200,7 @@ fn main() {
             // required we could have used an 'if let' to conditionally get the value)
             let input_path = sub_match.value_of("INPUT").unwrap();
             let inode_count: usize = sub_match.value_of("count").unwrap().parse().unwrap();
+            let show_data = sub_match.is_present("data");
 
             let mut tivo_drive =
                 ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive");
@@ -218,7 +223,7 @@ fn main() {
                 "Checksum",
                 "Flags",
                 "Number of Blocks",
-                "Data",
+                if show_data { "Data" } else { "" },
             ]);
             for inode in tivo_drive.zonemap.inode_iter().unwrap().take(inode_count) {
                 let data = if inode.numblocks == 0 {
@@ -242,7 +247,7 @@ fn main() {
                     inode.checksum,
                     inode.flags,
                     inode.numblocks,
-                    data
+                    if show_data { data } else { "".to_string() }
                 ]);
             }
 
