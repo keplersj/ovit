@@ -217,11 +217,16 @@ fn main() {
                 "Zone",
                 "Checksum",
                 "Flags",
-                // "Data",
                 "Number of Blocks",
-                // "Data Blocks"
+                "Data",
             ]);
             for inode in tivo_drive.zonemap.inode_iter().unwrap().take(inode_count) {
+                let data = if (inode.numblocks == 0) {
+                    format!("{:#X?}", inode.data)
+                } else {
+                    format!("{:#?}", inode.datablocks)
+                };
+
                 table.add_row(row![
                     inode.fsid,
                     inode.refcount,
@@ -236,9 +241,8 @@ fn main() {
                     inode.zone,
                     inode.checksum,
                     inode.flags,
-                    // inode.data,
                     inode.numblocks,
-                    // inode.datablocks
+                    data
                 ]);
             }
 
