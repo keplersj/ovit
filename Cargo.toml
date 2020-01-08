@@ -1,5 +1,7 @@
 [workspace]
 
 members = [
+    "apple-partition-map",
+    "ovit-lib",
     "ovit-util",
 ]

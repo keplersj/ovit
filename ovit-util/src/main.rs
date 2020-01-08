@@ -1,7 +1,11 @@
 mod ovit;
+
 extern crate clap;
 extern crate rayon;
+extern crate ovit_lib;
+
 use clap::{App, Arg, SubCommand};
+use ovit_lib::get_blocks_from_file;
 use std::convert::TryInto;
 
 fn main() {
@@ -38,7 +42,7 @@ fn main() {
 
             println!("{:#?}", inode_sample);
 
-            let block = ovit::util::get_blocks_from_file(
+            let block = get_blocks_from_file(
                 &input_path,
                 u64::from(
                     inode_sample[0].partition_starting_sector

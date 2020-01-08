@@ -1,6 +1,7 @@
 extern crate nom;
+extern crate ovit_lib;
 
-use super::util::get_blocks_from_drive_and_correct_order;
+use ovit_lib::get_blocks_from_drive_and_correct_order;
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,

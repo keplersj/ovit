@@ -1,7 +1,8 @@
 extern crate nom;
+extern crate ovit_lib;
 
 use super::MFSINodeIter;
-use crate::ovit::util::get_blocks_from_file;
+use ovit_lib::get_blocks_from_file;
 use nom::{bytes::streaming::tag, error::ErrorKind, number::streaming::be_u32, Err, IResult};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

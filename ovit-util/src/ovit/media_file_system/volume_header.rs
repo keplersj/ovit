@@ -1,7 +1,9 @@
 extern crate nom;
+extern crate apple_partition_map;
+extern crate ovit_lib;
 
-use crate::ovit::apple_partition_map::Partition;
-use crate::ovit::util::get_block_from_drive_and_correct_order;
+use apple_partition_map::Partition;
+use ovit_lib::get_block_from_drive_and_correct_order;
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,

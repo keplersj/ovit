@@ -1,7 +1,8 @@
 extern crate chrono;
 extern crate nom;
+extern crate ovit_lib;
 
-use crate::ovit::util::get_block_from_file;
+use ovit_lib::get_block_from_file;
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     bytes::streaming::{tag, take},

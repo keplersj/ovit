@@ -1,6 +1,7 @@
-pub mod apple_partition_map;
+extern crate apple_partition_map;
+extern crate ovit_lib;
+
 pub mod media_file_system;
-pub mod util;
 
 use apple_partition_map::ApplePartitionMap;
 use media_file_system::{MFSVolumeHeader, MFSZoneMap};
