@@ -221,7 +221,7 @@ fn main() {
                 "Data",
             ]);
             for inode in tivo_drive.zonemap.inode_iter().unwrap().take(inode_count) {
-                let data = if (inode.numblocks == 0) {
+                let data = if inode.numblocks == 0 {
                     format!("{:#X?}", inode.data)
                 } else {
                     format!("{:#?}", inode.datablocks)
@@ -293,6 +293,8 @@ fn main() {
             println!("{:X?}", block32);
             println!("{}", String::from_utf8_lossy(&block));
         }
-        _ => {}
+        _ => {
+            println!("{}", matches.usage());
+        }
     }
 }
