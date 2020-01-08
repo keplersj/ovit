@@ -100,7 +100,13 @@ impl MFSINode {
         let (input, checksum) = be_u32(input)?;
         let (input, flags) = be_u32(input)?;
         let (input, data) = if flags == INODE_DATA_IN_HEADER {
-            let data = input.to_vec();
+            let data: Vec<u8> = input
+                .to_vec()
+                .chunks(4)
+                .filter(|chunk| *chunk != &*vec![0xDEu8, 0xADu8, 0xBEu8, 0xEFu8])
+                .map(|chunk| chunk.to_vec())
+                .flatten()
+                .collect();
             let input: &[u8] = &[];
             (input, data)
         } else {
