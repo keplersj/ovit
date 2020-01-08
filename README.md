@@ -40,6 +40,16 @@ At the time of writing oViT is able to serialize the following MFS data types:
 - MFS Zones and Zone Maps
 - MFS INode
 
+#### Zones
+
+Running `cargo run -p ovit-tools -- zones tivo_hdd.iso` shows the following about the different zones of the MFS partitions on the drive:
+
+| Sector | Backup Sector | Zonemap Size | Next Zonemap Pointer | Backup Next Zonemap Pointer | Next Zonemap Size | Next Zonemap Partition Size | Next Zonemap Min. Allocation | Logstamp  | Type        | Checksum   | First Sector | Last Sector | Size     | Min. Allocations | Free Space | Bitmap Number |
+| ------ | ------------- | ------------ | -------------------- | --------------------------- | ----------------- | --------------------------- | ---------------------------- | --------- | ----------- | ---------- | ------------ | ----------- | -------- | ---------------- | ---------- | ------------- |
+| 1121   | 1048574       | 1            | 525410               | 1048565                     | 9                 | 32157696                    | 2048                         | 101141407 | INode       | 881335562  | 1122         | 525409      | 524288   | 524288           | 524288     | 1             |
+| 525410 | 1048565       | 9            | 525419               | 1048531                     | 34                | 523072                      | 8                            | 104363088 | Media       | 2999402420 | 1048576      | 33206271    | 32157696 | 2048             | 1122304    | 15            |
+| 525419 | 1048531       | 34           | 33206272             | 34254847                    | 1                 | 524288                      | 524288                       | 104363743 | Application | 3907386156 | 525453       | 1048524     | 523072   | 8                | 304760     | 17            |
+
 ---
 
 # oViT Information

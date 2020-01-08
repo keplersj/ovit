@@ -22,6 +22,9 @@ fn main() {
         .subcommand(SubCommand::with_name("partitions").arg(Arg::with_name("INPUT")
             .help("The drive image to read from")
             .required(true)))
+        .subcommand(SubCommand::with_name("zones").arg(Arg::with_name("INPUT")
+            .help("The drive image to read from")
+            .required(true)))
         .get_matches();
 
     match matches.subcommand() {
@@ -80,6 +83,61 @@ fn main() {
                     partition.starting_data_sector,
                     partition.data_sectors,
                     format!("{:#08X}", partition.status)
+                ]);
+            }
+
+            // Print the table to stdout
+            table.printstd();
+        }
+        ("zones", Some(sub_match)) => {
+            // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
+            // required we could have used an 'if let' to conditionally get the value)
+            let input_path = sub_match.value_of("INPUT").unwrap();
+
+            let tivo_drive =
+                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive");
+
+            // Create the table
+            let mut table = Table::new();
+
+            table.add_row(row![
+                "Sector",
+                "Backup Sector",
+                "Zonemap Size",
+                "Next Zonemap Pointer",
+                "Backup Next Zonemap Pointer",
+                "Next Zonemap Size",
+                "Next Zonemap Partition Size",
+                "Next Zonemap Min. Allocation",
+                "Logstamp",
+                "Type",
+                "Checksum",
+                "First Sector",
+                "Last Sector",
+                "Size",
+                "Min. Allocations",
+                "Free Space",
+                "Bitmap Number"
+            ]);
+            for zone in tivo_drive.zonemap {
+                table.add_row(row![
+                    zone.sector,
+                    zone.backup_sector,
+                    zone.zonemap_size,
+                    zone.next_zonemap_ptr,
+                    zone.backup_next_zonemap_ptr,
+                    zone.next_zonemap_size,
+                    zone.next_zonemap_partition_size,
+                    zone.next_zonemap_min_allocation,
+                    zone.logstamp,
+                    format!("{:#?}", zone.r#type),
+                    zone.checksum,
+                    zone.first_sector,
+                    zone.last_sector,
+                    zone.size,
+                    zone.min_allocations,
+                    zone.free_space,
+                    zone.bitmap_num
                 ]);
             }
 
