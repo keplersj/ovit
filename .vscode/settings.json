@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "*.podspec": "ruby",
-        "ctype.h": "c",
-        "stdlib.h": "c",
-        "ioctl.h": "c"
-    }
-}
