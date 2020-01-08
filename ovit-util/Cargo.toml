@@ -1,0 +1,11 @@
+[package]
+name = "ovit-util"
+version = "0.0.0-development"
+authors = ["Kepler Sticka-Jones <kepler@stickajones.org>"]
+edition = "2018"
+
+[dependencies]
+clap = "2.33.0"
+nom = "5.0.1"
+chrono = "0.4.7"
+rayon = "1.1.0"
