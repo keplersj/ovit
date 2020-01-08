@@ -28,6 +28,18 @@ fn main() {
         .subcommand(SubCommand::with_name("header").arg(Arg::with_name("INPUT")
             .help("The drive image to read from")
             .required(true)))
+        .subcommand(SubCommand::with_name("inodes")
+            .arg(Arg::with_name("INPUT")
+                .help("The drive image to read from")
+                .required(true))
+            .arg(Arg::with_name("count")
+                .short("c")
+                .long("count")
+                .value_name("NUMBER")
+                .help("Sets how many INodes to read")
+                .takes_value(true)
+                .required(false)
+                .default_value("25")))
         .get_matches();
 
     match matches.subcommand() {
@@ -143,9 +155,6 @@ fn main() {
                     zone.bitmap_num
                 ]);
             }
-
-            // Print the table to stdout
-            table.printstd();
         }
         ("header", Some(sub_match)) => {
             // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
@@ -177,6 +186,61 @@ fn main() {
                 header.next_zonemap_partition_size
             ]);
             table.add_row(row!["Next FSID", header.next_fsid]);
+
+            // Print the table to stdout
+            table.printstd();
+        }
+
+        ("inodes", Some(sub_match)) => {
+            // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
+            // required we could have used an 'if let' to conditionally get the value)
+            let input_path = sub_match.value_of("INPUT").unwrap();
+            let inode_count: usize = sub_match.value_of("count").unwrap().parse().unwrap();
+
+            let mut tivo_drive =
+                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive");
+
+            // Create the table
+            let mut table = Table::new();
+
+            table.add_row(row![
+                "FSID",
+                "Reference Count",
+                "Boot Cycles",
+                "Boot Seconds",
+                "INode",
+                "Size",
+                "Block Size",
+                "Blocks Used",
+                "Last Modified",
+                "Type",
+                "Zone",
+                "Checksum",
+                "Flags",
+                // "Data",
+                "Number of Blocks",
+                // "Data Blocks"
+            ]);
+            for inode in tivo_drive.zonemap.inode_iter().unwrap().take(inode_count) {
+                table.add_row(row![
+                    inode.fsid,
+                    inode.refcount,
+                    inode.bootcycles,
+                    inode.bootsecs,
+                    inode.inode,
+                    inode.size,
+                    inode.blocksize,
+                    inode.blockused,
+                    inode.last_modified,
+                    format!("{:#?}", inode.r#type),
+                    inode.zone,
+                    inode.checksum,
+                    inode.flags,
+                    // inode.data,
+                    inode.numblocks,
+                    // inode.datablocks
+                ]);
+            }
 
             // Print the table to stdout
             table.printstd();
