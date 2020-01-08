@@ -40,6 +40,23 @@ At the time of writing oViT is able to serialize the following MFS data types:
 - MFS Zones and Zone Maps
 - MFS INode
 
+#### Volume Header
+
+Running `cargo run -p ovit-tools -- header /run/media/kepler/External/tivo_hdd.iso` shows the following information from the drive's volume header:
+
+| Variable               | Value                                       |
+| ---------------------- | ------------------------------------------- |
+| State                  | 0                                           |
+| Checksum               | 2053975265                                  |
+| Root FSID              | 1                                           |
+| First Partition Size   | 1024                                        |
+| Partition List         | /dev/hda10 /dev/hda11 /dev/hda12 /dev/hda13 |
+| Total Sectors          | 77263872                                    |
+| Zonemap Sector         | 1121                                        |
+| Zonemap Backup Sector  | 1048574                                     |
+| Zonemap Partition Size | 524288                                      |
+| Next FSID              | 12697810                                    |
+
 #### Zones
 
 Running `cargo run -p ovit-tools -- zones tivo_hdd.iso` shows the following about the different zones of the MFS partitions on the drive:

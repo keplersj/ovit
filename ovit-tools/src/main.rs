@@ -25,6 +25,9 @@ fn main() {
         .subcommand(SubCommand::with_name("zones").arg(Arg::with_name("INPUT")
             .help("The drive image to read from")
             .required(true)))
+        .subcommand(SubCommand::with_name("header").arg(Arg::with_name("INPUT")
+            .help("The drive image to read from")
+            .required(true)))
         .get_matches();
 
     match matches.subcommand() {
@@ -140,6 +143,40 @@ fn main() {
                     zone.bitmap_num
                 ]);
             }
+
+            // Print the table to stdout
+            table.printstd();
+        }
+        ("header", Some(sub_match)) => {
+            // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
+            // required we could have used an 'if let' to conditionally get the value)
+            let input_path = sub_match.value_of("INPUT").unwrap();
+
+            let tivo_drive =
+                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive");
+
+            // Create the table
+            let mut table = Table::new();
+
+            let header = tivo_drive.volume_header;
+
+            table.add_row(row!["Variable", "Value"]);
+            table.add_row(row!["State", header.state]);
+            table.add_row(row!["Checksum", header.checksum]);
+            table.add_row(row!["Root FSID", header.root_fsid]);
+            table.add_row(row!["First Partition Size", header.firstpartsize]);
+            table.add_row(row!["Partition List", header.partitionlist]);
+            table.add_row(row!["Total Sectors", header.total_sectors]);
+            table.add_row(row!["Zonemap Sector", header.next_zonemap_sector]);
+            table.add_row(row![
+                "Zonemap Backup Sector",
+                header.next_zonemap_backup_sector
+            ]);
+            table.add_row(row![
+                "Zonemap Partition Size",
+                header.next_zonemap_partition_size
+            ]);
+            table.add_row(row!["Next FSID", header.next_fsid]);
 
             // Print the table to stdout
             table.printstd();
