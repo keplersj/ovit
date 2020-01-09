@@ -105,6 +105,10 @@ oViT is implemented using Rust
 
   MFS Tools is an open source CLI utility for interacting with TiVo Hard Drives. It's primary use case is for upgrading the hard drives in a functioning TiVo unit, not extracting data from the drive of an offline TiVo hard drive. However, the source code serves a good reference.
 
+- [TygerStripe/mfstools on GitHub](https://github.com/TygerStripe/mfstools)
+
+  The C source code for MFS Tools available on GitHub, helpful for reference. The way MFS Tools allocates portions of the storage to C structs is incredibly helpful for understanding how to read the drive. oViT opts for data parsing over allocation, in the name of verbosity and memory safety.
+
 - [_Battling Bit Rot, Link Rot, and Chaos: Hacking an 18 Year Old TiVo Hard Drive_ by Kepler Sticka-Jones](https://keplersj.com/blog/2019-10-12-battling-bit-rot-link-rot-and-chaos-hacking-an-18-year-old-tivo-hard-drive/)
 
   This October 12, 2019 entry on my blog details how oViT came into being, and explains the project's motivation and the early thought process.
