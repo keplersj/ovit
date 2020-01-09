@@ -1,24 +1,11 @@
 mod ovit;
 
 extern crate clap;
-extern crate ovit_util;
 #[macro_use]
 extern crate prettytable;
-extern crate nom;
-extern crate tivo_media_file_system;
 
 use clap::{App, Arg, SubCommand};
-use nom::{
-    bytes::streaming::take,
-    error::ErrorKind,
-    multi::fold_many0,
-    number::streaming::{be_u32, be_u8},
-    Err, IResult,
-};
-use ovit_util::get_blocks_from_file;
 use prettytable::Table;
-use std::convert::TryInto;
-use tivo_media_file_system::MFSINodeType;
 
 fn main() {
     let matches = App::new("oViT")
@@ -292,85 +279,14 @@ fn main() {
 
             println!("Found INode: {:#?}", found_inode);
 
-            let block = if found_inode.numblocks != 0 {
-                get_blocks_from_file(
-                    &input_path,
-                    found_inode.partition_starting_sector + found_inode.datablocks[0].sector,
-                    found_inode.datablocks[0].count as usize,
-                    true,
-                )
-                .unwrap()
-            } else {
-                found_inode.data
-            };
-
-            let (_, entries) = entries_with_initial_offset(&block).unwrap();
+            let entries = found_inode
+                .get_entries_from_directory(input_path.to_string())
+                .unwrap();
 
             println!("{:#?}", entries);
         }
         _ => {
             println!("{}", matches.usage());
         }
-    }
-}
-
-fn entries_with_initial_offset(input: &[u8]) -> IResult<&[u8], Vec<MFSEntry>> {
-    let (input, _offset) = take(4usize)(input)?;
-    let (input, entries) = fold_many0(MFSEntry::parse, Vec::new(), |mut acc: Vec<_>, item| {
-        acc.push(item);
-        acc
-    })(input)?;
-
-    Ok((input, entries))
-}
-
-fn string(size: usize, input: &[u8]) -> IResult<&[u8], String> {
-    let (input, str_bytes) = take(size)(input)?;
-    // match String::from_utf8_lossy(str_bytes) {
-    //     Ok(string) => Ok((input, string.trim_matches(char::from(0)).to_string())),
-    //     Err(_) => Err(Err::Error((input, ErrorKind::ParseTo))),
-    // }
-
-    let raw_string = String::from_utf8_lossy(str_bytes).to_string();
-    let split_by_null: Vec<&str> = raw_string.split('\u{0}').collect();
-    let sanitized = split_by_null[0].to_string();
-
-    Ok((input, sanitized))
-}
-
-#[derive(Debug, Clone)]
-struct MFSEntry {
-    fsid: u32,
-    length: u8,
-    r#type: MFSINodeType,
-    name: String,
-}
-
-impl MFSEntry {
-    fn parse(input: &[u8]) -> IResult<&[u8], MFSEntry> {
-        let (input, fsid) = be_u32(input)?;
-
-        if fsid == 0 {
-            return Err(Err::Error((input, ErrorKind::ParseTo)));
-        }
-
-        let (input, length) = be_u8(input)?;
-
-        if length == 0 {
-            return Err(Err::Error((input, ErrorKind::ParseTo)));
-        }
-
-        let (input, r#type) = MFSINodeType::parse(input)?;
-        let (input, name) = string((length - 6).try_into().unwrap(), input)?;
-
-        Ok((
-            input,
-            MFSEntry {
-                fsid,
-                length,
-                r#type,
-                name,
-            },
-        ))
     }
 }

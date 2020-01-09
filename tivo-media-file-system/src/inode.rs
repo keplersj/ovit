@@ -2,15 +2,19 @@ extern crate chrono;
 extern crate nom;
 extern crate ovit_util;
 
+use crate::MFSEntry;
 use chrono::{DateTime, TimeZone, Utc};
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,
     multi::count,
+    multi::fold_many0,
     number::streaming::{be_u16, be_u32, be_u8},
     Err, IResult,
 };
-use ovit_util::{get_block_from_drive_and_correct_order, get_block_from_file};
+use ovit_util::{
+    get_block_from_drive_and_correct_order, get_block_from_file, get_blocks_from_file,
+};
 use std::fs::File;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -195,6 +199,33 @@ impl MFSINode {
             Err(err) => Err(format!("Could not open inode with err {:?}", err)),
         }
     }
+
+    pub fn get_entries_from_directory(&self, input_path: String) -> Result<Vec<MFSEntry>, String> {
+        let block = if self.numblocks != 0 {
+            get_blocks_from_file(
+                &input_path,
+                self.partition_starting_sector + self.datablocks[0].sector,
+                self.datablocks[0].count as usize,
+                true,
+            )
+            .unwrap()
+        } else {
+            self.data.clone()
+        };
+        let (_, entries) = entries_with_initial_offset(&block).unwrap();
+
+        Ok(entries)
+    }
+}
+
+fn entries_with_initial_offset(input: &[u8]) -> IResult<&[u8], Vec<MFSEntry>> {
+    let (input, _offset) = take(4usize)(input)?;
+    let (input, entries) = fold_many0(MFSEntry::parse, Vec::new(), |mut acc: Vec<_>, item| {
+        acc.push(item);
+        acc
+    })(input)?;
+
+    Ok((input, entries))
 }
 
 #[derive(Debug)]
