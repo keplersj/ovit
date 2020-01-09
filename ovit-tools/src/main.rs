@@ -3,9 +3,11 @@ mod ovit;
 extern crate clap;
 #[macro_use]
 extern crate prettytable;
+extern crate tivo_media_file_system;
 
 use clap::{App, Arg, SubCommand};
 use prettytable::Table;
+use tivo_media_file_system::MFSINodeType;
 
 fn main() {
     let matches = App::new("oViT")
@@ -279,11 +281,15 @@ fn main() {
 
             println!("Found INode: {:#?}", found_inode);
 
-            let entries = found_inode
-                .get_entries_from_directory(input_path.to_string())
-                .unwrap();
+            if found_inode.r#type == MFSINodeType::Dir {
+                println!("INode is a Directory, getting directory entries.");
 
-            println!("{:#?}", entries);
+                let entries = found_inode
+                    .get_entries_from_directory(input_path.to_string())
+                    .unwrap();
+
+                println!("Entries: {:#?}", entries);
+            }
         }
         _ => {
             println!("{}", matches.usage());
