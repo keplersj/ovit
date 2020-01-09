@@ -44,9 +44,14 @@ fn main() {
                 .short("d")
                 .long("display-data")
                 .required(false)))
-        .subcommand(SubCommand::with_name("experiment").arg(Arg::with_name("INPUT")
-            .help("The drive image to read from")
-            .required(true)))
+        .subcommand(SubCommand::with_name("fsid")
+            .arg(Arg::with_name("INPUT")
+                .help("The drive image to read from")
+                .required(true))
+            .arg(Arg::with_name("id")
+                .value_name("NUMBER")
+                .help("Sets the FSID to lookup")
+                .required(true)))
         .get_matches();
 
     match matches.subcommand() {
@@ -257,10 +262,11 @@ fn main() {
             // Print the table to stdout
             table.printstd();
         }
-        ("experiment", Some(sub_match)) => {
+        ("fsid", Some(sub_match)) => {
             // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
             // required we could have used an 'if let' to conditionally get the value)
             let input_path = sub_match.value_of("INPUT").unwrap();
+            let fsid: u32 = sub_match.value_of("id").unwrap().parse().unwrap();
 
             println!("Loading TiVo Drive");
 
@@ -271,11 +277,9 @@ fn main() {
 
             println!();
 
-            let fsid_search = tivo_drive.volume_header.root_fsid;
+            println!("Looking for FSID: {}", fsid);
 
-            println!("Looking for FSID: {}", fsid_search);
-
-            let found_inode = tivo_drive.get_inode_from_fsid(fsid_search).unwrap();
+            let found_inode = tivo_drive.get_inode_from_fsid(fsid).unwrap();
 
             println!("Found INode: {:#?}", found_inode);
 
