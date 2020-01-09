@@ -322,10 +322,11 @@ fn entries_with_initial_offset(input: &[u8]) -> IResult<&[u8], Vec<MFSEntry>> {
 
 fn string(size: usize, input: &[u8]) -> IResult<&[u8], String> {
     let (input, str_bytes) = take(size)(input)?;
-    match String::from_utf8(str_bytes.to_vec()) {
-        Ok(string) => Ok((input, string.trim_matches(char::from(0)).to_string())),
-        Err(_) => Err(Err::Error((input, ErrorKind::ParseTo))),
-    }
+    // match String::from_utf8_lossy(str_bytes) {
+    //     Ok(string) => Ok((input, string.trim_matches(char::from(0)).to_string())),
+    //     Err(_) => Err(Err::Error((input, ErrorKind::ParseTo))),
+    // }
+    Ok((input, String::from_utf8_lossy(str_bytes).to_string()))
 }
 
 #[derive(Debug, Clone)]
@@ -339,6 +340,11 @@ struct MFSEntry {
 impl MFSEntry {
     fn parse(input: &[u8]) -> IResult<&[u8], MFSEntry> {
         let (input, fsid) = be_u32(input)?;
+
+        if fsid == 0 {
+            return Err(Err::Error((input, ErrorKind::ParseTo)));
+        }
+
         let (input, length) = be_u8(input)?;
         let (input, r#type) = MFSINodeType::parse(input)?;
         let (input, name) = string((length - 6).try_into().unwrap(), input)?;

@@ -5,12 +5,84 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug",
-      "type": "lldb-mi",
+      "type": "lldb",
       "request": "launch",
-      "target": "./debug/ovit-tools",
-      "cwd": "${workspaceRoot}",
-      "valuesFormatting": "parseText"
+      "name": "Debug unit tests in library 'apple-partition-map'",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=apple-partition-map"],
+        "filter": {
+          "name": "apple-partition-map",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'ovit-util'",
+      "cargo": {
+        "args": ["test", "--no-run", "--lib", "--package=ovit-util"],
+        "filter": {
+          "name": "ovit-util",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'tivo-media-file-system'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=tivo-media-file-system"
+        ],
+        "filter": {
+          "name": "tivo-media-file-system",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'ovit-tools'",
+      "cargo": {
+        "args": ["build", "--bin=ovit-tools", "--package=ovit-tools"],
+        "filter": {
+          "name": "ovit-tools",
+          "kind": "bin"
+        }
+      },
+      "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "1"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'ovit-tools'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=ovit-tools",
+          "--package=ovit-tools"
+        ],
+        "filter": {
+          "name": "ovit-tools",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
     }
   ]
 }
