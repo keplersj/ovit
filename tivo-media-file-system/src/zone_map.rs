@@ -150,7 +150,7 @@ impl MFSZone {
 #[derive(Debug)]
 pub struct MFSZoneMap {
     source_file_path: String,
-    partition_starting_sector: u32,
+    pub partition_starting_sector: u32,
     is_source_byte_swapped: bool,
 
     next_zonemap_ptr: u32,

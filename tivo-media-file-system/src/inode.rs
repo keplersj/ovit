@@ -10,7 +10,8 @@ use nom::{
     number::streaming::{be_u16, be_u32, be_u8},
     Err, IResult,
 };
-use ovit_util::get_block_from_file;
+use ovit_util::{get_block_from_drive_and_correct_order, get_block_from_file};
+use std::fs::File;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum MFSINodeType {
@@ -161,6 +162,24 @@ impl MFSINode {
     ) -> Result<MFSINode, String> {
         let inode_bytes = get_block_from_file(
             path,
+            u64::from(partition_starting_sector + sector),
+            is_byte_swapped,
+        )?;
+
+        match MFSINode::parse(&inode_bytes, partition_starting_sector, sector) {
+            Ok((_, inode)) => Ok(inode),
+            Err(err) => Err(format!("Could not open inode with err {:?}", err)),
+        }
+    }
+
+    pub fn from_file_at_sector(
+        file: &mut File,
+        partition_starting_sector: u32,
+        sector: u32,
+        is_byte_swapped: bool,
+    ) -> Result<MFSINode, String> {
+        let inode_bytes = get_block_from_drive_and_correct_order(
+            file,
             u64::from(partition_starting_sector + sector),
             is_byte_swapped,
         )?;

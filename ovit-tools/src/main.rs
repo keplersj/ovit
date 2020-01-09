@@ -44,6 +44,9 @@ fn main() {
                 .short("d")
                 .long("display-data")
                 .required(false)))
+        .subcommand(SubCommand::with_name("experiment").arg(Arg::with_name("INPUT")
+            .help("The drive image to read from")
+            .required(true)))
         .get_matches();
 
     match matches.subcommand() {
@@ -268,24 +271,18 @@ fn main() {
 
             println!();
 
-            let inode_sample: Vec<tivo_media_file_system::MFSINode> = tivo_drive
-                .zonemap
-                .inode_iter()
-                .unwrap()
-                .filter(|inode| inode.r#type == tivo_media_file_system::MFSINodeType::Dir)
-                .filter(|inode| !inode.datablocks.is_empty())
-                .take(5)
-                .collect();
+            let fsid_search = tivo_drive.volume_header.root_fsid;
 
-            println!("{:#?}", inode_sample);
+            println!("Looking for FSID: {}", fsid_search);
+
+            let found_inode = tivo_drive.get_inode_from_fsid(fsid_search).unwrap();
+
+            println!("Found INode: {:#?}", found_inode);
 
             let block = get_blocks_from_file(
                 &input_path,
-                u64::from(
-                    inode_sample[0].partition_starting_sector
-                        + inode_sample[0].datablocks[0].sector,
-                ),
-                inode_sample[0].datablocks[0].count as usize,
+                u64::from(found_inode.partition_starting_sector + found_inode.datablocks[0].sector),
+                found_inode.datablocks[0].count as usize,
                 true,
             )
             .unwrap();

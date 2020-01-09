@@ -5,10 +5,14 @@ use apple_partition_map::ApplePartitionMap;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
-use tivo_media_file_system::{MFSVolumeHeader, MFSZoneMap};
+use tivo_media_file_system::{MFSINode, MFSVolumeHeader, MFSZoneMap};
 
 pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
+
+fn sector_for_inode(inode: u32) -> u32 {
+    (2 * inode) + 1122
+}
 
 #[derive(Debug)]
 pub struct TivoDrive {
@@ -16,6 +20,7 @@ pub struct TivoDrive {
     pub partition_map: ApplePartitionMap,
     pub volume_header: MFSVolumeHeader,
     pub zonemap: MFSZoneMap,
+    is_byte_swapped: bool,
 }
 
 impl TivoDrive {
@@ -70,6 +75,31 @@ impl TivoDrive {
             partition_map,
             volume_header,
             zonemap,
+            is_byte_swapped,
         })
+    }
+
+    pub fn get_inode_from_fsid(&mut self, fsid: u32) -> Result<MFSINode, String> {
+        // Prime number used in hash for finding base inode of fsid. (from mfstools)
+        const FSID_HASH: u32 = 0x106d9;
+
+        // int inode = (fsid * MFS_FSID_HASH) & (mfs_inode_count (mfshnd) - 1);
+
+        let inode = fsid * FSID_HASH;
+        let sector = sector_for_inode(inode);
+
+        Ok(MFSINode::from_file_at_sector(
+            &mut self.source_file,
+            self.zonemap.partition_starting_sector,
+            sector,
+            self.is_byte_swapped,
+        )?)
+
+        // Ok(self
+        //     .zonemap
+        //     .inode_iter()
+        //     .unwrap()
+        //     .nth((inode).try_into().unwrap())
+        //     .unwrap())
     }
 }
