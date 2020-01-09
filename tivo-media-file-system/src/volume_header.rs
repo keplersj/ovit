@@ -73,7 +73,7 @@ impl MFSVolumeHeader {
                 firstpartsize,
                 partitionlist,
                 total_sectors,
-                next_zonemap_sector: u64::from(next_zonemap_backup_sector),
+                next_zonemap_sector: u64::from(next_zonemap_sector),
                 next_zonemap_backup_sector: u64::from(next_zonemap_backup_sector),
                 next_zonemap_partition_size,
                 next_fsid,

@@ -330,7 +330,12 @@ fn string(size: usize, input: &[u8]) -> IResult<&[u8], String> {
     //     Ok(string) => Ok((input, string.trim_matches(char::from(0)).to_string())),
     //     Err(_) => Err(Err::Error((input, ErrorKind::ParseTo))),
     // }
-    Ok((input, String::from_utf8_lossy(str_bytes).to_string()))
+
+    let raw_string = String::from_utf8_lossy(str_bytes).to_string();
+    let split_by_null: Vec<&str> = raw_string.split('\u{0}').collect();
+    let sanitized = split_by_null[0].to_string();
+
+    Ok((input, sanitized))
 }
 
 #[derive(Debug, Clone)]
