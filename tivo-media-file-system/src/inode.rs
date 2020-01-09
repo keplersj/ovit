@@ -13,7 +13,7 @@ use nom::{
 use ovit_util::{get_block_from_drive_and_correct_order, get_block_from_file};
 use std::fs::File;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum MFSINodeType {
     Node = 0,
     File = 1,

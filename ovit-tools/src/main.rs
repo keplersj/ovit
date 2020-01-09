@@ -4,12 +4,21 @@ extern crate clap;
 extern crate ovit_util;
 #[macro_use]
 extern crate prettytable;
+extern crate nom;
 extern crate tivo_media_file_system;
 
 use clap::{App, Arg, SubCommand};
+use nom::{
+    bytes::streaming::take,
+    error::ErrorKind,
+    multi::fold_many0,
+    number::streaming::{be_u32, be_u8},
+    Err, IResult,
+};
 use ovit_util::get_blocks_from_file;
 use prettytable::Table;
 use std::convert::TryInto;
+use tivo_media_file_system::MFSINodeType;
 
 fn main() {
     let matches = App::new("oViT")
@@ -291,16 +300,57 @@ fn main() {
             )
             .unwrap();
 
-            let block32: Vec<u32> = block
-                .chunks(4)
-                .map(|chunk| u32::from_be_bytes(chunk.try_into().unwrap()))
-                .collect();
+            let (_, entries) = entries_with_initial_offset(&block).unwrap();
 
-            println!("{:X?}", block32);
-            println!("{}", String::from_utf8_lossy(&block));
+            println!("{:#?}", entries);
         }
         _ => {
             println!("{}", matches.usage());
         }
+    }
+}
+
+fn entries_with_initial_offset(input: &[u8]) -> IResult<&[u8], Vec<MFSEntry>> {
+    let (input, _offset) = take(4usize)(input)?;
+    let (input, entries) = fold_many0(MFSEntry::parse, Vec::new(), |mut acc: Vec<_>, item| {
+        acc.push(item);
+        acc
+    })(input)?;
+
+    Ok((input, entries))
+}
+
+fn string(size: usize, input: &[u8]) -> IResult<&[u8], String> {
+    let (input, str_bytes) = take(size)(input)?;
+    match String::from_utf8(str_bytes.to_vec()) {
+        Ok(string) => Ok((input, string.trim_matches(char::from(0)).to_string())),
+        Err(_) => Err(Err::Error((input, ErrorKind::ParseTo))),
+    }
+}
+
+#[derive(Debug, Clone)]
+struct MFSEntry {
+    fsid: u32,
+    length: u8,
+    r#type: MFSINodeType,
+    name: String,
+}
+
+impl MFSEntry {
+    fn parse(input: &[u8]) -> IResult<&[u8], MFSEntry> {
+        let (input, fsid) = be_u32(input)?;
+        let (input, length) = be_u8(input)?;
+        let (input, r#type) = MFSINodeType::parse(input)?;
+        let (input, name) = string((length - 6).try_into().unwrap(), input)?;
+
+        Ok((
+            input,
+            MFSEntry {
+                fsid,
+                length,
+                r#type,
+                name,
+            },
+        ))
     }
 }

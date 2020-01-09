@@ -289,6 +289,7 @@ version = "0.0.0-development"
 dependencies = [
  "apple-partition-map 0.0.0-development",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nom 5.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ovit-util 0.0.0-development",
  "prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tivo-media-file-system 0.0.0-development",

@@ -5,6 +5,7 @@ authors = ["Kepler Sticka-Jones <kepler@stickajones.org>"]
 edition = "2018"
 
 [dependencies]
+nom = "5.1.0"
 clap = "2.33.0"
 prettytable-rs = "0.8.0"
 apple-partition-map = { path = "../apple-partition-map" }
