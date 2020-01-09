@@ -89,7 +89,13 @@ Running `cargo run -p ovit-tools -- inodes tivo_hdd.iso -c 10` shows the first 1
 
 # oViT Information
 
-oViT is implemented using Rust
+oViT is implemented using Rust, with the goal of creating robust and memory-safe utilities that'll last for years to come. TiVo became a cultural touchstone in the early 2000's. Due to its cultural significance alone it should be possible to archive content from TiVo hard drives and preserve them. The tapes of previous generations are easily accessible and preservable today, the recordings from the TiVo era should be too.
+
+oViT is build using the following libraries:
+
+- [`nom`](https://crates.io/crates/nom) - for parsing Apple Partition Map data and Media File System data
+- [`clap`](https://crates.io/crates/clap) - for creating oViT's command line interfaces
+- [`chrono`](https://crates.io/crates/chrono) - for parsing time and date information present in the Media File System
 
 ## See Also
 
