@@ -39,6 +39,7 @@ At the time of writing oViT is able to serialize the following MFS data types:
 - MFS Volume Header
 - MFS Zones and Zone Maps
 - MFS INode
+  - Directories
 
 #### Volume Header
 
