@@ -28,19 +28,19 @@ impl MFSZoneType {
 
 #[derive(Debug)]
 pub struct MFSZone {
-    pub sector: u32,
-    pub backup_sector: u32,
+    pub sector: u64,
+    pub backup_sector: u64,
     pub zonemap_size: u32,
-    pub next_zonemap_ptr: u32,
-    pub backup_next_zonemap_ptr: u32,
+    pub next_zonemap_ptr: u64,
+    pub backup_next_zonemap_ptr: u64,
     pub next_zonemap_size: u32,
     pub next_zonemap_partition_size: u32,
     pub next_zonemap_min_allocation: u32,
     pub logstamp: u32,
     pub r#type: MFSZoneType,
     pub checksum: u32,
-    pub first_sector: u32,
-    pub last_sector: u32,
+    pub first_sector: u64,
+    pub last_sector: u64,
     pub size: u32,
     pub min_allocations: u32,
     pub free_space: u32,
@@ -71,19 +71,19 @@ impl MFSZone {
         Ok((
             input,
             MFSZone {
-                sector,
-                backup_sector,
+                sector: u64::from(sector),
+                backup_sector: u64::from(backup_sector),
                 zonemap_size,
-                next_zonemap_ptr,
-                backup_next_zonemap_ptr,
+                next_zonemap_ptr: u64::from(next_zonemap_ptr),
+                backup_next_zonemap_ptr: u64::from(backup_next_zonemap_ptr),
                 next_zonemap_size,
                 next_zonemap_partition_size,
                 next_zonemap_min_allocation,
                 r#type,
                 logstamp,
                 checksum,
-                first_sector,
-                last_sector,
+                first_sector: u64::from(first_sector),
+                last_sector: u64::from(last_sector),
                 size,
                 min_allocations,
                 free_space,
@@ -94,15 +94,15 @@ impl MFSZone {
 
     fn from_file_at_sector(
         path: &str,
-        partition_starting_sector: u32,
-        sector: u32,
-        backup_sector: u32,
+        partition_starting_sector: u64,
+        sector: u64,
+        backup_sector: u64,
         size: usize,
         is_byte_swapped: bool,
     ) -> Result<MFSZone, String> {
         let zonemap_bytes = &match get_blocks_from_file(
             path,
-            u64::from(partition_starting_sector + sector),
+            partition_starting_sector + sector,
             // size,
             1,
             is_byte_swapped,
@@ -122,7 +122,7 @@ impl MFSZone {
                 // println!("Couldn't load zonemap, trying backup");
                 let backup_zonemap_bytes = &match get_blocks_from_file(
                     path,
-                    u64::from(partition_starting_sector + backup_sector),
+                    partition_starting_sector + backup_sector,
                     // size,
                     1,
                     is_byte_swapped,
@@ -150,20 +150,20 @@ impl MFSZone {
 #[derive(Debug)]
 pub struct MFSZoneMap {
     source_file_path: String,
-    pub partition_starting_sector: u32,
+    pub partition_starting_sector: u64,
     is_source_byte_swapped: bool,
 
-    next_zonemap_ptr: u32,
-    backup_next_zonemap_ptr: u32,
+    next_zonemap_ptr: u64,
+    backup_next_zonemap_ptr: u64,
     next_zonemap_size: u32,
 }
 
 impl MFSZoneMap {
     pub fn new(
         path: &str,
-        partition_starting_sector: u32,
-        sector: u32,
-        backup_sector: u32,
+        partition_starting_sector: u64,
+        sector: u64,
+        backup_sector: u64,
         size: usize,
         is_byte_swapped: bool,
     ) -> Result<MFSZoneMap, String> {

@@ -38,7 +38,7 @@ impl MFSINodeType {
 
 #[derive(Debug, Clone)]
 pub struct MFSINodeDataBlock {
-    pub sector: u32,
+    pub sector: u64,
     pub count: u32,
 }
 
@@ -47,7 +47,13 @@ impl MFSINodeDataBlock {
         let (input, sector) = be_u32(input)?;
         let (input, count) = be_u32(input)?;
 
-        Ok((input, MFSINodeDataBlock { sector, count }))
+        Ok((
+            input,
+            MFSINodeDataBlock {
+                sector: u64::from(sector),
+                count,
+            },
+        ))
     }
 }
 
@@ -71,9 +77,9 @@ pub struct MFSINode {
     pub datablocks: Vec<MFSINodeDataBlock>,
 
     //Added for my conveinence
-    pub partition_starting_sector: u32,
-    pub sector_in_map: u32,
-    pub sector_on_drive: u32,
+    pub partition_starting_sector: u64,
+    pub sector_in_map: u64,
+    pub sector_on_drive: u64,
 }
 
 const INODE_DATA_IN_HEADER: u32 = 0x4000_0000;
@@ -81,8 +87,8 @@ const INODE_DATA_IN_HEADER: u32 = 0x4000_0000;
 impl MFSINode {
     pub fn parse(
         input: &[u8],
-        partition_starting_sector: u32,
-        sector: u32,
+        partition_starting_sector: u64,
+        sector: u64,
     ) -> IResult<&[u8], MFSINode> {
         let (input, fsid) = be_u32(input)?;
         let (input, refcount) = be_u32(input)?;
@@ -156,8 +162,8 @@ impl MFSINode {
 
     pub fn from_path_at_sector(
         path: &str,
-        partition_starting_sector: u32,
-        sector: u32,
+        partition_starting_sector: u64,
+        sector: u64,
         is_byte_swapped: bool,
     ) -> Result<MFSINode, String> {
         let inode_bytes = get_block_from_file(
@@ -174,13 +180,13 @@ impl MFSINode {
 
     pub fn from_file_at_sector(
         file: &mut File,
-        partition_starting_sector: u32,
-        sector: u32,
+        partition_starting_sector: u64,
+        sector: u64,
         is_byte_swapped: bool,
     ) -> Result<MFSINode, String> {
         let inode_bytes = get_block_from_drive_and_correct_order(
             file,
-            u64::from(partition_starting_sector + sector),
+            partition_starting_sector + sector,
             is_byte_swapped,
         )?;
 
@@ -194,11 +200,11 @@ impl MFSINode {
 #[derive(Debug)]
 pub struct MFSINodeIter {
     pub source_file_path: String,
-    pub partition_starting_sector: u32,
+    pub partition_starting_sector: u64,
     pub is_source_byte_swapped: bool,
 
-    pub next_inode_sector: u32,
-    pub last_inode_sector: u32,
+    pub next_inode_sector: u64,
+    pub last_inode_sector: u64,
 }
 
 impl Iterator for MFSINodeIter {

@@ -10,7 +10,7 @@ use tivo_media_file_system::{MFSINode, MFSVolumeHeader, MFSZoneMap};
 pub const TIVO_BOOT_MAGIC: u16 = 0x1492;
 pub const TIVO_BOOT_AMIGC: u16 = 0x9214;
 
-fn sector_for_inode(inode: u32) -> u32 {
+fn sector_for_inode(inode: u64) -> u64 {
     (2 * inode) + 1122
 }
 
@@ -63,7 +63,7 @@ impl TivoDrive {
 
         let zonemap = MFSZoneMap::new(
             path,
-            app_region.starting_sector,
+            u64::from(app_region.starting_sector),
             volume_header.next_zonemap_sector,
             volume_header.next_zonemap_backup_sector,
             volume_header.next_zonemap_partition_size as usize,
@@ -81,11 +81,15 @@ impl TivoDrive {
 
     pub fn get_inode_from_fsid(&mut self, fsid: u32) -> Result<MFSINode, String> {
         // Prime number used in hash for finding base inode of fsid. (from mfstools)
-        const FSID_HASH: u32 = 0x106d9;
+        const FSID_HASH: u64 = 0x106d9;
 
         // int inode = (fsid * MFS_FSID_HASH) & (mfs_inode_count (mfshnd) - 1);
 
-        let inode = fsid * FSID_HASH;
+        let inode_count: u64 = (self.zonemap.inode_iter().unwrap().len())
+            .try_into()
+            .unwrap();
+
+        let inode: u64 = (u64::from(fsid) * FSID_HASH) & (inode_count);
         let sector = sector_for_inode(inode);
 
         Ok(MFSINode::from_file_at_sector(

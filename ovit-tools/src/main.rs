@@ -292,13 +292,17 @@ fn main() {
 
             println!("Found INode: {:#?}", found_inode);
 
-            let block = get_blocks_from_file(
-                &input_path,
-                u64::from(found_inode.partition_starting_sector + found_inode.datablocks[0].sector),
-                found_inode.datablocks[0].count as usize,
-                true,
-            )
-            .unwrap();
+            let block = if found_inode.numblocks != 0 {
+                get_blocks_from_file(
+                    &input_path,
+                    found_inode.partition_starting_sector + found_inode.datablocks[0].sector,
+                    found_inode.datablocks[0].count as usize,
+                    true,
+                )
+                .unwrap()
+            } else {
+                found_inode.data
+            };
 
             let (_, entries) = entries_with_initial_offset(&block).unwrap();
 
@@ -346,6 +350,11 @@ impl MFSEntry {
         }
 
         let (input, length) = be_u8(input)?;
+
+        if length == 0 {
+            return Err(Err::Error((input, ErrorKind::ParseTo)));
+        }
+
         let (input, r#type) = MFSINodeType::parse(input)?;
         let (input, name) = string((length - 6).try_into().unwrap(), input)?;
 
