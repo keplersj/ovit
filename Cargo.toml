@@ -5,5 +5,8 @@ members = [
     "ovit-util",
     "tivo-media-file-system",
 
+    "ovit",
+
     "ovit-tools",
+    "ovit-fuse"
 ]

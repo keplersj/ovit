@@ -1,8 +1,7 @@
-mod ovit;
-
 extern crate clap;
 #[macro_use]
 extern crate prettytable;
+extern crate ovit;
 extern crate tivo_media_file_system;
 
 use clap::{App, Arg, SubCommand};

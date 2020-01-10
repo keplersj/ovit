@@ -1,5 +1,5 @@
 [package]
-name = "ovit-tools"
+name = "ovit"
 version = "0.0.0-development"
 authors = ["Kepler Sticka-Jones <kepler@stickajones.org>"]
 edition = "2018"
@@ -7,5 +7,6 @@ edition = "2018"
 [dependencies]
 clap = "2.33.0"
 prettytable-rs = "0.8.0"
-ovit = { path = "../ovit" }
+apple-partition-map = { path = "../apple-partition-map" }
+ovit-util = { path = "../ovit-util" }
 tivo-media-file-system = { path = "../tivo-media-file-system" }
