@@ -6,7 +6,6 @@ use fuse_mt::{
     ResultOpen, ResultReaddir,
 };
 use ovit::TivoDrive;
-use std::convert::TryInto;
 use std::ffi::OsString;
 use std::path::{Component, Path};
 use time::Timespec;
@@ -51,7 +50,10 @@ fn get_fsid_from_path(path: &Path, disk_location: String) -> Result<u32, i32> {
                             match inode.get_entries_from_directory(disk_location.clone()) {
                                 Ok(entries) => {
                                     match entries.iter().find(|entry| entry.name == native_path) {
-                                        Some(entry) => Some(entry.fsid),
+                                        Some(entry) => {
+                                            previous_fsid = entry.fsid;
+                                            Some(entry.fsid)
+                                        }
                                         None => None,
                                     }
                                 }
@@ -90,17 +92,23 @@ impl FilesystemMT for TiVoFS {
         println!("destroy");
     }
 
-    fn getattr(&self, _req: RequestInfo, path: &Path, fh: Option<u64>) -> ResultEntry {
+    fn getattr(&self, _req: RequestInfo, path: &Path, _fh: Option<u64>) -> ResultEntry {
         println!("getattr: {:?}", path);
 
-        let fsid = get_fsid_from_path(path, self.drive_location.clone())?;
+        let fsid = match get_fsid_from_path(path, self.drive_location.clone()) {
+            Ok(fsid) => fsid,
+            Err(_err) => {
+                println!("Could not get FSID for path {:?}", path);
+                return Err(0);
+            }
+        };
 
         match get_tivo_drive(self.drive_location.clone())?.get_inode_from_fsid(fsid) {
             Ok(inode) => Ok((
                 TTL,
                 FileAttr {
-                    size: 1,
-                    blocks: 1,
+                    size: u64::from(inode.size),
+                    blocks: u64::from(inode.blocksize),
                     atime: TTL,
                     mtime: Timespec {
                         sec: inode.last_modified.timestamp(),
@@ -130,7 +138,7 @@ impl FilesystemMT for TiVoFS {
 
         let fsid = get_fsid_from_path(path, self.drive_location.clone())?;
 
-        Ok((fsid.try_into().unwrap(), 0))
+        Ok((u64::from(fsid), 0))
     }
 
     fn readdir(&self, _req: RequestInfo, path: &Path, _fh: u64) -> ResultReaddir {
@@ -138,15 +146,22 @@ impl FilesystemMT for TiVoFS {
 
         let fsid = get_fsid_from_path(path, self.drive_location.clone())?;
 
-        let mut tivo_drive = match TivoDrive::from_disk_image(&self.drive_location) {
-            Ok(drive) => drive,
-            Err(_err) => return Err(0),
-        };
+        let mut tivo_drive = get_tivo_drive(self.drive_location.clone())?;
 
-        match tivo_drive.get_inode_from_fsid(fsid.try_into().unwrap()) {
+        match tivo_drive.get_inode_from_fsid(fsid) {
             Ok(inode) => match inode.get_entries_from_directory(self.drive_location.clone()) {
                 Ok(entries) => Ok(entries
                     .iter()
+                    .filter(|entry| entry.name != "")
+                    .filter(
+                        |entry| match &mut get_tivo_drive(self.drive_location.clone()) {
+                            Ok(tivo_drive) => match tivo_drive.get_inode_from_fsid(entry.fsid) {
+                                Ok(inode) => inode.fsid != 0,
+                                Err(_err) => false,
+                            },
+                            Err(_err) => false,
+                        },
+                    )
                     .map(|entry| -> DirectoryEntry {
                         DirectoryEntry {
                             kind: if entry.r#type == MFSINodeType::Dir {
@@ -162,5 +177,45 @@ impl FilesystemMT for TiVoFS {
             },
             Err(_err) => Err(0),
         }
+    }
+
+    fn open(&self, _req: RequestInfo, path: &Path, _flags: u32) -> ResultOpen {
+        println!("open path: {:#?}", path);
+
+        let fsid = get_fsid_from_path(path, self.drive_location.clone())?;
+
+        Ok((u64::from(fsid), 0))
+    }
+
+    fn read(
+        &self,
+        _req: RequestInfo,
+        path: &Path,
+        _fh: u64,
+        _offset: u64,
+        _size: u32,
+        result: impl FnOnce(Result<&[u8], i32>),
+    ) {
+        println!("read path: {:#?}", path);
+
+        match get_fsid_from_path(path, self.drive_location.clone()) {
+            Ok(fsid) => match &mut get_tivo_drive(self.drive_location.clone()) {
+                Ok(tivo_drive) => match tivo_drive.get_inode_from_fsid(fsid) {
+                    Ok(inode) => {
+                        if inode.numblocks == 0 {
+                            result(Ok(&inode.data))
+                        } else if !inode.datablocks.is_empty() {
+                            println!("Need to implement reading datablocks!");
+                            result(Err(0))
+                        } else {
+                            result(Err(0))
+                        }
+                    }
+                    Err(_err) => result(Err(0)),
+                },
+                Err(_err) => result(Err(0)),
+            },
+            Err(_err) => result(Err(0)),
+        };
     }
 }
