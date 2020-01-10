@@ -359,6 +359,7 @@ dependencies = [
  "fuse_mt 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ovit 0.0.0-development",
  "time 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tivo-media-file-system 0.0.0-development",
 ]
 
 [[package]]

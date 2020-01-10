@@ -9,3 +9,4 @@ clap = "2.33.0"
 fuse_mt = "0.5.0"
 time = "0.1.42"
 ovit = { path = "../ovit" }
+tivo-media-file-system = { path = "../tivo-media-file-system" }

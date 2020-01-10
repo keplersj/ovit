@@ -62,8 +62,22 @@
           "kind": "bin"
         }
       },
-      "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "2568604"],
-      // "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "1"],
+      // "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "2568604"],
+      "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "1"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'ovit-fuse'",
+      "cargo": {
+        "args": ["build", "--bin=ovit-fuse", "--package=ovit-fuse"],
+        "filter": {
+          "name": "ovit-fuse",
+          "kind": "bin"
+        }
+      },
+      "args": ["/run/media/kepler/External/tivo_hdd.iso", "./fuse_mount_point"],
       "cwd": "${workspaceFolder}"
     },
     {

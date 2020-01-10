@@ -21,10 +21,10 @@ fn string(size: usize, input: &[u8]) -> IResult<&[u8], String> {
 
 #[derive(Debug, Clone)]
 pub struct MFSEntry {
-    fsid: u32,
+    pub fsid: u32,
     length: u8,
-    r#type: MFSINodeType,
-    name: String,
+    pub r#type: MFSINodeType,
+    pub name: String,
 }
 
 impl MFSEntry {

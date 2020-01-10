@@ -30,8 +30,9 @@ fn main() {
         .value_of("MOUNT POINT")
         .expect("No mount point provided!");
 
-    let filesystem =
-        TiVoFS::from_drive_location(tivo_drive_location).expect("Could not create TiVoFS");
+    let filesystem = TiVoFS {
+        drive_location: tivo_drive_location.to_string(),
+    };
 
     let fuse_args: Vec<&OsStr> = vec![&OsStr::new("-o"), &OsStr::new("auto_unmount")];
 

@@ -212,9 +212,11 @@ impl MFSINode {
         } else {
             self.data.clone()
         };
-        let (_, entries) = entries_with_initial_offset(&block).unwrap();
 
-        Ok(entries)
+        match entries_with_initial_offset(&block) {
+            Ok((_, entries)) => Ok(entries),
+            Err(_err) => Err("Could not get entries from directory".to_string()),
+        }
     }
 }
 
