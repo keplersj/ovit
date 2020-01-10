@@ -201,16 +201,10 @@ impl FilesystemMT for TiVoFS {
         match get_fsid_from_path(path, self.drive_location.clone()) {
             Ok(fsid) => match &mut get_tivo_drive(self.drive_location.clone()) {
                 Ok(tivo_drive) => match tivo_drive.get_inode_from_fsid(fsid) {
-                    Ok(inode) => {
-                        if inode.numblocks == 0 {
-                            result(Ok(&inode.data))
-                        } else if !inode.datablocks.is_empty() {
-                            println!("Need to implement reading datablocks!");
-                            result(Err(0))
-                        } else {
-                            result(Err(0))
-                        }
-                    }
+                    Ok(inode) => match inode.get_data(self.drive_location.clone()) {
+                        Ok(data) => result(Ok(&data)),
+                        Err(_err) => result(Err(0)),
+                    },
                     Err(_err) => result(Err(0)),
                 },
                 Err(_err) => result(Err(0)),

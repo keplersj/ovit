@@ -77,7 +77,10 @@
           "kind": "bin"
         }
       },
-      "args": ["/run/media/kepler/External/tivo_hdd.iso", "./fuse_mount_point"],
+      "args": [
+        "/run/media/kepler/External/tivo_hdd.iso",
+        "/home/kepler/Desktop/fuse_mount_point"
+      ],
       "cwd": "${workspaceFolder}"
     },
     {

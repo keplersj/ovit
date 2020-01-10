@@ -218,6 +218,32 @@ impl MFSINode {
             Err(_err) => Err("Could not get entries from directory".to_string()),
         }
     }
+
+    pub fn get_data(&self, input_path: String) -> Result<Vec<u8>, String> {
+        if !self.data.is_empty() {
+            Ok(self.data.clone())
+        } else if !self.datablocks.is_empty() {
+            Ok(self
+                .datablocks
+                .iter()
+                .map(|datablock| {
+                    match get_blocks_from_file(
+                        &input_path,
+                        self.partition_starting_sector + datablock.sector,
+                        datablock.count as usize,
+                        true,
+                    ) {
+                        Ok(blocks) => blocks,
+                        // Not great, but... fine.
+                        Err(err) => vec![],
+                    }
+                })
+                .flatten()
+                .collect())
+        } else {
+            Ok(vec![])
+        }
+    }
 }
 
 fn entries_with_initial_offset(input: &[u8]) -> IResult<&[u8], Vec<MFSEntry>> {

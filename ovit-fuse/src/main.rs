@@ -34,6 +34,8 @@ fn main() {
         drive_location: tivo_drive_location.to_string(),
     };
 
+    // TODO: Check that the drive location is actually available before mounting with FUSE
+
     let fuse_args: Vec<&OsStr> = vec![&OsStr::new("-o"), &OsStr::new("auto_unmount")];
 
     println!("Mounting TiVoFS with FUSE");

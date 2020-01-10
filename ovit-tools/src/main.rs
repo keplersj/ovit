@@ -231,12 +231,6 @@ fn main() {
                 if show_data { "Data" } else { "" },
             ]);
             for inode in tivo_drive.zonemap.inode_iter().unwrap().take(inode_count) {
-                let data = if inode.numblocks == 0 {
-                    format!("{:#X?}", inode.data)
-                } else {
-                    format!("{:#?}", inode.datablocks)
-                };
-
                 table.add_row(row![
                     inode.fsid,
                     inode.refcount,
@@ -252,7 +246,11 @@ fn main() {
                     inode.checksum,
                     inode.flags,
                     inode.numblocks,
-                    if show_data { data } else { "".to_string() }
+                    if show_data {
+                        format!("{:?}", inode.get_data(input_path.to_string()))
+                    } else {
+                        "".to_string()
+                    }
                 ]);
             }
 

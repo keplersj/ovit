@@ -85,6 +85,18 @@ Running `cargo run -p ovit-tools -- inodes tivo_hdd.iso -c 10` shows the first 1
 | 0        | 0               | 196         | 22734645     | 8     | 2128 | 131072     | 2128        | 2011-07-04 13:20:11 UTC | Stream | 1    | 3598525128 | 0          | 0                |
 | 0        | 0               | 199         | 5885156      | 9     | 8    | 0          | 0           | 2011-07-23 00:31:46 UTC | Db     | 2    | 3289510782 | 1073741824 | 0                |
 
+#### Files
+
+Below are examples of the first two files successfully viewed from the TiVo Media Filesystem using the oViT FUSE Driver:
+
+`/Server/A0003fc81:3:20:0`:
+
+![PNG image at /Server/A0003fc81:3:20:0](./examples/A0003fc81:3:20:0.png)
+
+`/Server/AR0000a96b:4:0:0.`:
+
+![PNG image at /Server/AR0000a96b:4:0:0](./examples/AR0000a96b:4:0:0.png)
+
 ---
 
 # oViT Information
