@@ -108,7 +108,29 @@ impl TivoDrive {
             return Ok(first_inode);
         };
 
-        // println!("Couldn't find INode for FSID {}. Looking for it.", fsid);
+        let inode_id_base = first_inode.inode;
+        let mut current_inode_id = inode;
+        let mut current_inode = first_inode;
+
+        println!("Couldn't find INode for FSID {}. Looking for it.", fsid);
+
+        while current_inode.fsid != fsid
+            && current_inode.flags == 0x8000_0000
+            && ((current_inode_id + 1) % (inode_count)) != u64::from(inode_id_base)
+        {
+            current_inode_id += 1;
+            current_inode = MFSINode::from_file_at_sector(
+                &mut self.source_file,
+                self.zonemap.partition_starting_sector,
+                sector_for_inode(current_inode_id),
+                self.is_byte_swapped,
+            )?;
+        }
+
+        if current_inode.fsid == fsid {
+            println!("Holy fuck!! We found {}'s INode!", fsid);
+            return Ok(current_inode);
+        };
 
         // match inode_iter
         //     .par_bridge()

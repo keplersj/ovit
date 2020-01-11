@@ -285,8 +285,8 @@ impl Iterator for MFSINodeIter {
                 }
             };
 
-            self.next_inode_sector += 1;
-            // self.next_inode_sector += 2; //Every inode exists on the drive twice
+            // self.next_inode_sector += 1;
+            self.next_inode_sector += 2; //Every inode exists on the drive twice
 
             Some(inode)
         } else {
