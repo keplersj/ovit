@@ -1,4 +1,5 @@
 extern crate ovit;
+extern crate rayon;
 extern crate tivo_media_file_system;
 
 use fuse_mt::{
@@ -6,6 +7,7 @@ use fuse_mt::{
     ResultOpen, ResultReaddir,
 };
 use ovit::TivoDrive;
+use rayon::prelude::*;
 use std::ffi::OsString;
 use std::path::{Component, Path};
 use time::Timespec;
@@ -151,12 +153,13 @@ impl FilesystemMT for TiVoFS {
         match tivo_drive.get_inode_from_fsid(fsid) {
             Ok(inode) => match inode.get_entries_from_directory(self.drive_location.clone()) {
                 Ok(entries) => Ok(entries
-                    .iter()
+                    // .iter()
+                    .par_iter()
                     .filter(|entry| entry.name != "")
                     .filter(
                         |entry| match &mut get_tivo_drive(self.drive_location.clone()) {
                             Ok(tivo_drive) => match tivo_drive.get_inode_from_fsid(entry.fsid) {
-                                Ok(inode) => inode.fsid != 0,
+                                Ok(inode) => true,
                                 Err(_err) => false,
                             },
                             Err(_err) => false,

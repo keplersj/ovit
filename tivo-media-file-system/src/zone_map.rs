@@ -26,7 +26,7 @@ impl MFSZoneType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MFSZone {
     pub sector: u64,
     pub backup_sector: u64,
@@ -147,7 +147,7 @@ impl MFSZone {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MFSZoneMap {
     source_file_path: String,
     pub partition_starting_sector: u64,

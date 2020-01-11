@@ -87,6 +87,7 @@ pub struct MFSINode {
 }
 
 const INODE_DATA_IN_HEADER: u32 = 0x4000_0000;
+const INODE_CHAINED_FLAG: u32 = 0x8000_0000;
 
 impl MFSINode {
     pub fn parse(
@@ -284,8 +285,8 @@ impl Iterator for MFSINodeIter {
                 }
             };
 
-            // self.next_inode_sector += 1;
-            self.next_inode_sector += 2; //Every inode exists on the drive twice
+            self.next_inode_sector += 1;
+            // self.next_inode_sector += 2; //Every inode exists on the drive twice
 
             Some(inode)
         } else {

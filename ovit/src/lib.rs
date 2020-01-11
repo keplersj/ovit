@@ -1,7 +1,9 @@
 extern crate apple_partition_map;
+extern crate rayon;
 extern crate tivo_media_file_system;
 
 use apple_partition_map::ApplePartitionMap;
+use rayon::prelude::*;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::prelude::*;
@@ -83,27 +85,37 @@ impl TivoDrive {
         // Prime number used in hash for finding base inode of fsid. (from mfstools)
         const FSID_HASH: u64 = 0x106d9;
 
+        let inode_iter = self.zonemap.inode_iter().unwrap();
+
         // int inode = (fsid * MFS_FSID_HASH) & (mfs_inode_count (mfshnd) - 1);
 
-        let inode_count: u64 = (self.zonemap.inode_iter().unwrap().len())
-            .try_into()
-            .unwrap();
+        let inode_count: u64 = (inode_iter.len()).try_into().unwrap();
 
         let inode: u64 = (u64::from(fsid) * FSID_HASH) & (inode_count);
         let sector = sector_for_inode(inode);
 
-        Ok(MFSINode::from_file_at_sector(
+        let first_inode = MFSINode::from_file_at_sector(
             &mut self.source_file,
             self.zonemap.partition_starting_sector,
             sector,
             self.is_byte_swapped,
-        )?)
+        )?;
+        let first_fsid = first_inode.fsid;
 
-        // Ok(self
-        //     .zonemap
-        //     .inode_iter()
-        //     .unwrap()
-        //     .nth((inode).try_into().unwrap())
-        //     .unwrap())
+        if first_fsid == fsid {
+            return Ok(first_inode);
+        };
+
+        // println!("Couldn't find INode for FSID {}. Looking for it.", fsid);
+
+        // match inode_iter
+        //     .par_bridge()
+        //     .find_first(|inode| inode.fsid == fsid)
+        // {
+        //     Some(inode) => Ok(inode),
+        //     None => Err(format!("Could not get INode for FSID {}", fsid)),
+        // }
+
+        Err(format!("Could not get INode for FSID {}", fsid))
     }
 }

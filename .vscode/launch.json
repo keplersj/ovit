@@ -62,8 +62,8 @@
           "kind": "bin"
         }
       },
-      // "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "2568604"],
-      "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "1"],
+      "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "2568604"],
+      // "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "1"],
       "cwd": "${workspaceFolder}"
     },
     {
