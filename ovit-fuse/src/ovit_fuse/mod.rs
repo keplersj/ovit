@@ -131,7 +131,28 @@ impl FilesystemMT for TiVoFS {
                     flags: 0,
                 },
             )),
-            Err(_err) => Err(0),
+            Err(_err) => {
+                println!("getattr({:?}): File has an FSID from a parent directory, but INode could not be read. Creating a dummy file to maintain structure.", path);
+                Ok((
+                    TTL,
+                    FileAttr {
+                        size: 0,
+                        blocks: 0,
+                        atime: TTL,
+                        mtime: TTL,
+                        ctime: TTL,
+                        crtime: TTL,
+                        kind: FileType::RegularFile,
+                        perm: 777,
+                        nlink: 0,
+                        uid: 1000,
+                        gid: 1000,
+                        rdev: 0,
+                        flags: 0,
+                    },
+                ))
+                // Err(0)
+            }
         }
     }
 
@@ -156,15 +177,15 @@ impl FilesystemMT for TiVoFS {
                     // .iter()
                     .par_iter()
                     .filter(|entry| entry.name != "")
-                    .filter(
-                        |entry| match &mut get_tivo_drive(self.drive_location.clone()) {
-                            Ok(tivo_drive) => match tivo_drive.get_inode_from_fsid(entry.fsid) {
-                                Ok(inode) => true,
-                                Err(_err) => false,
-                            },
-                            Err(_err) => false,
-                        },
-                    )
+                    // .filter(
+                    //     |entry| match &mut get_tivo_drive(self.drive_location.clone()) {
+                    //         Ok(tivo_drive) => match tivo_drive.get_inode_from_fsid(entry.fsid) {
+                    //             Ok(inode) => true,
+                    //             Err(_err) => false,
+                    //         },
+                    //         Err(_err) => false,
+                    //     },
+                    // )
                     .map(|entry| -> DirectoryEntry {
                         DirectoryEntry {
                             kind: if entry.r#type == MFSINodeType::Dir {
