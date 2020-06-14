@@ -29,7 +29,7 @@ pub struct TivoDrive {
     pub partition_map: ApplePartitionMap,
     pub volume_header: MFSVolumeHeader,
     pub zonemap: MFSZoneMap,
-    is_byte_swapped: bool,
+    pub is_byte_swapped: bool,
 }
 
 impl TivoDrive {
@@ -128,17 +128,8 @@ impl TivoDrive {
         }
 
         if current_inode.fsid == fsid {
-            println!("Holy fuck!! We found {}'s INode!", fsid);
             return Ok(current_inode);
         };
-
-        // match inode_iter
-        //     .par_bridge()
-        //     .find_first(|inode| inode.fsid == fsid)
-        // {
-        //     Some(inode) => Ok(inode),
-        //     None => Err(format!("Could not get INode for FSID {}", fsid)),
-        // }
 
         Err(format!("Could not get INode for FSID {}", fsid))
     }

@@ -118,10 +118,12 @@ impl FilesystemMT for TiVoFS {
                     },
                     ctime: TTL,
                     crtime: TTL,
-                    kind: if inode.r#type == MFSINodeType::Dir {
-                        FileType::Directory
-                    } else {
-                        FileType::RegularFile
+                    kind: match inode.r#type {
+                        MFSINodeType::Dir => FileType::Directory,
+                        MFSINodeType::Node => FileType::Symlink,
+                        MFSINodeType::Db => FileType::RegularFile,
+                        MFSINodeType::File => FileType::RegularFile,
+                        _ => FileType::RegularFile,
                     },
                     perm: 777,
                     nlink: 0,
@@ -142,7 +144,7 @@ impl FilesystemMT for TiVoFS {
                         mtime: TTL,
                         ctime: TTL,
                         crtime: TTL,
-                        kind: FileType::RegularFile,
+                        kind: FileType::CharDevice,
                         perm: 777,
                         nlink: 0,
                         uid: 1000,
@@ -188,10 +190,12 @@ impl FilesystemMT for TiVoFS {
                     // )
                     .map(|entry| -> DirectoryEntry {
                         DirectoryEntry {
-                            kind: if entry.r#type == MFSINodeType::Dir {
-                                FileType::Directory
-                            } else {
-                                FileType::RegularFile
+                            kind: match inode.r#type {
+                                MFSINodeType::Dir => FileType::Directory,
+                                MFSINodeType::Node => FileType::Symlink,
+                                MFSINodeType::Db => FileType::RegularFile,
+                                MFSINodeType::File => FileType::RegularFile,
+                                _ => FileType::RegularFile,
                             },
                             name: OsString::from(entry.name.clone()),
                         }
@@ -225,10 +229,15 @@ impl FilesystemMT for TiVoFS {
         match get_fsid_from_path(path, self.drive_location.clone()) {
             Ok(fsid) => match &mut get_tivo_drive(self.drive_location.clone()) {
                 Ok(tivo_drive) => match tivo_drive.get_inode_from_fsid(fsid) {
-                    Ok(inode) => match inode.get_data(self.drive_location.clone()) {
-                        Ok(data) => result(Ok(&data)),
-                        Err(_err) => result(Err(0)),
-                    },
+                    Ok(inode) => {
+                        if inode.r#type == MFSINodeType::Db {
+                            println!("read({:#?}): I'm a database item!", path);
+                        }
+                        match inode.get_data(self.drive_location.clone()) {
+                            Ok(data) => result(Ok(&data)),
+                            Err(_err) => result(Err(0)),
+                        }
+                    }
                     Err(_err) => result(Err(0)),
                 },
                 Err(_err) => result(Err(0)),

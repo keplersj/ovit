@@ -6,7 +6,7 @@ extern crate tivo_media_file_system;
 
 use clap::{App, Arg, SubCommand};
 use prettytable::Table;
-use tivo_media_file_system::MFSINodeType;
+use tivo_media_file_system::{MFSINode, MFSINodeType};
 
 fn main() {
     let matches = App::new("oViT")
@@ -48,6 +48,14 @@ fn main() {
             .arg(Arg::with_name("id")
                 .value_name("NUMBER")
                 .help("Sets the FSID to lookup")
+                .required(true)))
+        .subcommand(SubCommand::with_name("inode")
+            .arg(Arg::with_name("INPUT")
+                .help("The drive image to read from")
+                .required(true))
+            .arg(Arg::with_name("id")
+                .value_name("NUMBER")
+                .help("Sets the INode to lookup")
                 .required(true)))
         .get_matches();
 
@@ -275,6 +283,47 @@ fn main() {
             println!("Looking for FSID: {}", fsid);
 
             let found_inode = tivo_drive.get_inode_from_fsid(fsid).unwrap();
+
+            println!("Found INode: {:#?}", found_inode);
+
+            if found_inode.r#type == MFSINodeType::Dir {
+                println!("INode is a Directory, getting directory entries.");
+
+                let entries = found_inode
+                    .get_entries_from_directory(input_path.to_string())
+                    .unwrap();
+
+                println!("Entries: {:#?}", entries);
+            }
+        }
+        ("inode", Some(sub_match)) => {
+            // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
+            // required we could have used an 'if let' to conditionally get the value)
+            let input_path = sub_match.value_of("INPUT").unwrap();
+            let inode: u64 = sub_match.value_of("id").unwrap().parse().unwrap();
+
+            println!("Loading TiVo Drive");
+
+            let mut tivo_drive =
+                ovit::TivoDrive::from_disk_image(input_path).expect("Could not load TiVo drive");
+
+            println!("TiVo Drive Loaded!");
+
+            println!();
+
+            println!("Looking for INode: {}", inode);
+
+            fn sector_for_inode(inode: u64) -> u64 {
+                (2 * inode) + 1122
+            }
+
+            let found_inode = MFSINode::from_file_at_sector(
+                &mut tivo_drive.source_file,
+                tivo_drive.zonemap.partition_starting_sector,
+                sector_for_inode(inode),
+                tivo_drive.is_byte_swapped,
+            )
+            .unwrap();
 
             println!("Found INode: {:#?}", found_inode);
 
