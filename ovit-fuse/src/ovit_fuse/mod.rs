@@ -6,6 +6,7 @@ use fuse_mt::{
     DirectoryEntry, FileAttr, FileType, FilesystemMT, RequestInfo, ResultEmpty, ResultEntry,
     ResultOpen, ResultReaddir,
 };
+use log::{debug, info, trace, warn};
 use ovit::TivoDrive;
 use rayon::prelude::*;
 use std::ffi::OsString;
@@ -86,21 +87,21 @@ fn get_fsid_from_path(path: &Path, disk_location: String) -> Result<u32, i32> {
 
 impl FilesystemMT for TiVoFS {
     fn init(&self, _req: RequestInfo) -> ResultEmpty {
-        println!("init");
+        trace!("init");
         Ok(())
     }
 
     fn destroy(&self, _req: RequestInfo) {
-        println!("destroy");
+        trace!("destroy");
     }
 
     fn getattr(&self, _req: RequestInfo, path: &Path, _fh: Option<u64>) -> ResultEntry {
-        println!("getattr: {:?}", path);
+        debug!("getattr: {:?}", path);
 
         let fsid = match get_fsid_from_path(path, self.drive_location.clone()) {
             Ok(fsid) => fsid,
             Err(_err) => {
-                println!("Could not get FSID for path {:?}", path);
+                warn!("Could not get FSID for path {:?}", path);
                 return Err(0);
             }
         };
@@ -134,7 +135,7 @@ impl FilesystemMT for TiVoFS {
                 },
             )),
             Err(_err) => {
-                println!("getattr({:?}): File has an FSID from a parent directory, but INode could not be read. Creating a dummy file to maintain structure.", path);
+                warn!("getattr({:?}): File has an FSID from a parent directory, but INode could not be read. Creating a dummy file to maintain structure.", path);
                 Ok((
                     TTL,
                     FileAttr {
@@ -159,7 +160,7 @@ impl FilesystemMT for TiVoFS {
     }
 
     fn opendir(&self, _req: RequestInfo, path: &Path, _flags: u32) -> ResultOpen {
-        println!("opendir path: {:#?}", path);
+        info!("opendir path: {:#?}", path);
 
         let fsid = get_fsid_from_path(path, self.drive_location.clone())?;
 
@@ -167,7 +168,7 @@ impl FilesystemMT for TiVoFS {
     }
 
     fn readdir(&self, _req: RequestInfo, path: &Path, _fh: u64) -> ResultReaddir {
-        println!("readdir path: {:#?}", path);
+        info!("readdir path: {:#?}", path);
 
         let fsid = get_fsid_from_path(path, self.drive_location.clone())?;
 
@@ -208,7 +209,7 @@ impl FilesystemMT for TiVoFS {
     }
 
     fn open(&self, _req: RequestInfo, path: &Path, _flags: u32) -> ResultOpen {
-        println!("open path: {:#?}", path);
+        info!("open path: {:#?}", path);
 
         let fsid = get_fsid_from_path(path, self.drive_location.clone())?;
 
@@ -224,14 +225,14 @@ impl FilesystemMT for TiVoFS {
         _size: u32,
         result: impl FnOnce(Result<&[u8], i32>),
     ) {
-        println!("read path: {:#?}", path);
+        info!("read path: {:#?}", path);
 
         match get_fsid_from_path(path, self.drive_location.clone()) {
             Ok(fsid) => match &mut get_tivo_drive(self.drive_location.clone()) {
                 Ok(tivo_drive) => match tivo_drive.get_inode_from_fsid(fsid) {
                     Ok(inode) => {
                         if inode.r#type == MFSINodeType::Db {
-                            println!("read({:#?}): I'm a database item!", path);
+                            info!("read({:#?}): I'm a database item!", path);
                         }
                         match inode.get_data(self.drive_location.clone()) {
                             Ok(data) => result(Ok(&data)),

@@ -2,6 +2,7 @@ extern crate nom;
 extern crate ovit_util;
 
 use super::MFSINodeIter;
+use log::warn;
 use nom::{bytes::streaming::tag, error::ErrorKind, number::streaming::be_u32, Err, IResult};
 use ovit_util::get_blocks_from_file;
 
@@ -119,7 +120,7 @@ impl MFSZone {
         match MFSZone::parse(&zonemap_bytes) {
             Ok((_, zonemap)) => Ok(zonemap),
             Err(_) => {
-                // println!("Couldn't load zonemap, trying backup");
+                warn!("Couldn't load zonemap, trying backup");
                 let backup_zonemap_bytes = &match get_blocks_from_file(
                     path,
                     partition_starting_sector + backup_sector,

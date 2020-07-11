@@ -1,12 +1,17 @@
 mod ovit_fuse;
 
 extern crate clap;
+#[macro_use]
+extern crate log;
 
 use clap::{App, Arg};
+use log::info;
 use ovit_fuse::TiVoFS;
 use std::ffi::OsStr;
 
 fn main() {
+    env_logger::init();
+
     let matches = App::new("ovit-fuse")
         .version("0.0.0-dev")
         .author("Kepler Sticka-Jones <kepler@stickajones.org>")
@@ -38,7 +43,7 @@ fn main() {
 
     let fuse_args: Vec<&OsStr> = vec![&OsStr::new("-o"), &OsStr::new("auto_unmount")];
 
-    println!("Mounting TiVoFS with FUSE");
+    info!("Mounting TiVoFS with FUSE");
 
     fuse_mt::mount(
         fuse_mt::FuseMT::new(filesystem, 1),

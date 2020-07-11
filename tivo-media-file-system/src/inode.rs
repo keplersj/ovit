@@ -4,6 +4,7 @@ extern crate ovit_util;
 
 use crate::MFSEntry;
 use chrono::{DateTime, TimeZone, Utc};
+use log::error;
 use nom::{
     bytes::streaming::{tag, take},
     error::ErrorKind,
@@ -277,7 +278,7 @@ impl Iterator for MFSINodeIter {
             ) {
                 Ok(inode) => inode,
                 Err(_err) => {
-                    println!("{:?}", _err);
+                    error!("{:?}", _err);
                     return None;
                 }
             };

@@ -3,6 +3,7 @@ extern crate rayon;
 extern crate tivo_media_file_system;
 
 use apple_partition_map::ApplePartitionMap;
+use log::warn;
 use rayon::prelude::*;
 use std::convert::TryInto;
 use std::fs::File;
@@ -112,7 +113,7 @@ impl TivoDrive {
         let mut current_inode_id = inode;
         let mut current_inode = first_inode;
 
-        println!("Couldn't find INode for FSID {}. Looking for it.", fsid);
+        warn!("Couldn't find INode for FSID {}. Looking for it.", fsid);
 
         while current_inode.fsid != fsid
             && current_inode.flags == 0x8000_0000

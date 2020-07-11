@@ -11,3 +11,4 @@ rayon = "1.3.0"
 apple-partition-map = { path = "../apple-partition-map" }
 ovit-util = { path = "../ovit-util" }
 tivo-media-file-system = { path = "../tivo-media-file-system" }
+log = "0.4"
