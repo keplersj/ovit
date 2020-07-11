@@ -171,11 +171,8 @@ impl MFSINode {
         sector: u64,
         is_byte_swapped: bool,
     ) -> Result<MFSINode, String> {
-        let inode_bytes = get_block_from_file(
-            path,
-            u64::from(partition_starting_sector + sector),
-            is_byte_swapped,
-        )?;
+        let inode_bytes =
+            get_block_from_file(path, partition_starting_sector + sector, is_byte_swapped)?;
 
         match MFSINode::parse(&inode_bytes, partition_starting_sector, sector) {
             Ok((_, inode)) => Ok(inode),
@@ -230,7 +227,7 @@ impl MFSINode {
                 .map(|datablock| {
                     match get_blocks_from_file(
                         &input_path,
-                        self.partition_starting_sector + datablock.sector,
+                        datablock.sector,
                         datablock.count as usize,
                         true,
                     ) {

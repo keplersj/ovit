@@ -120,7 +120,7 @@ impl FilesystemMT for TiVoFS {
                     crtime: TTL,
                     kind: match inode.r#type {
                         MFSINodeType::Dir => FileType::Directory,
-                        MFSINodeType::Node => FileType::Symlink,
+                        MFSINodeType::Node => FileType::RegularFile,
                         MFSINodeType::Db => FileType::RegularFile,
                         MFSINodeType::File => FileType::RegularFile,
                         _ => FileType::RegularFile,
@@ -144,7 +144,7 @@ impl FilesystemMT for TiVoFS {
                         mtime: TTL,
                         ctime: TTL,
                         crtime: TTL,
-                        kind: FileType::CharDevice,
+                        kind: FileType::RegularFile,
                         perm: 777,
                         nlink: 0,
                         uid: 1000,
@@ -192,7 +192,7 @@ impl FilesystemMT for TiVoFS {
                         DirectoryEntry {
                             kind: match inode.r#type {
                                 MFSINodeType::Dir => FileType::Directory,
-                                MFSINodeType::Node => FileType::Symlink,
+                                MFSINodeType::Node => FileType::RegularFile,
                                 MFSINodeType::Db => FileType::RegularFile,
                                 MFSINodeType::File => FileType::RegularFile,
                                 _ => FileType::RegularFile,
