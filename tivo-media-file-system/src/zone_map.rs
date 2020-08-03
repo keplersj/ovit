@@ -1,7 +1,7 @@
 extern crate nom;
 extern crate ovit_util;
 
-use super::MFSINodeIter;
+use super::{MFSINodeIter, MFSVolumes};
 use log::warn;
 use nom::{bytes::streaming::tag, error::ErrorKind, number::streaming::be_u32, Err, IResult};
 use ovit_util::get_blocks_from_file;
@@ -95,7 +95,6 @@ impl MFSZone {
 
     fn from_file_at_sector(
         path: &str,
-        partition_starting_sector: u64,
         sector: u64,
         backup_sector: u64,
         size: usize,
@@ -103,7 +102,7 @@ impl MFSZone {
     ) -> Result<MFSZone, String> {
         let zonemap_bytes = &match get_blocks_from_file(
             path,
-            partition_starting_sector + sector,
+            sector,
             // size,
             1,
             is_byte_swapped,
@@ -123,7 +122,7 @@ impl MFSZone {
                 warn!("Couldn't load zonemap, trying backup");
                 let backup_zonemap_bytes = &match get_blocks_from_file(
                     path,
-                    partition_starting_sector + backup_sector,
+                    backup_sector,
                     // size,
                     1,
                     is_byte_swapped,
@@ -151,18 +150,19 @@ impl MFSZone {
 #[derive(Debug, Clone)]
 pub struct MFSZoneMap {
     source_file_path: String,
-    pub partition_starting_sector: u64,
     is_source_byte_swapped: bool,
 
     next_zonemap_ptr: u64,
     backup_next_zonemap_ptr: u64,
     next_zonemap_size: u32,
+
+    volumes: MFSVolumes,
 }
 
 impl MFSZoneMap {
     pub fn new(
         path: &str,
-        partition_starting_sector: u64,
+        volumes: &MFSVolumes,
         sector: u64,
         backup_sector: u64,
         size: usize,
@@ -170,12 +170,13 @@ impl MFSZoneMap {
     ) -> Result<MFSZoneMap, String> {
         Ok(MFSZoneMap {
             source_file_path: path.to_string(),
-            partition_starting_sector,
             is_source_byte_swapped: is_byte_swapped,
 
             next_zonemap_ptr: sector,
             backup_next_zonemap_ptr: backup_sector,
             next_zonemap_size: size as u32,
+
+            volumes: volumes.clone(),
         })
     }
 
@@ -189,12 +190,23 @@ impl MFSZoneMap {
 
         Ok(MFSINodeIter {
             source_file_path: String::from(&self.source_file_path),
-            partition_starting_sector: self.partition_starting_sector,
+            partition_starting_sector: self
+                .volumes
+                .find_sector_volume(inode_zone.first_sector)
+                .disk_sector
+                .into(),
             is_source_byte_swapped: self.is_source_byte_swapped,
 
             next_inode_sector: inode_zone.first_sector,
             last_inode_sector: inode_zone.last_sector,
         })
+    }
+
+    pub fn inode_count(&mut self) -> u32 {
+        self.filter(|zone| zone.r#type == MFSZoneType::INode)
+            .map(|zone| zone.size)
+            .sum::<u32>()
+            / 2
     }
 }
 
@@ -205,9 +217,12 @@ impl Iterator for MFSZoneMap {
         if self.next_zonemap_ptr != 0 {
             let zonemap = match MFSZone::from_file_at_sector(
                 &self.source_file_path,
-                self.partition_starting_sector,
-                self.next_zonemap_ptr,
-                self.backup_next_zonemap_ptr,
+                self.volumes
+                    .clone()
+                    .sector_to_disk_location(self.next_zonemap_ptr),
+                self.volumes
+                    .clone()
+                    .sector_to_disk_location(self.backup_next_zonemap_ptr),
                 self.next_zonemap_size as usize,
                 self.is_source_byte_swapped,
             ) {

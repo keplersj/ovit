@@ -9,3 +9,6 @@ pub use inode::*;
 
 mod entry;
 pub use entry::*;
+
+mod volume;
+pub use volume::*;

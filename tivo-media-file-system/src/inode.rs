@@ -87,8 +87,8 @@ pub struct MFSINode {
     pub sector_on_drive: u64,
 }
 
-const INODE_DATA_IN_HEADER: u32 = 0x4000_0000;
-const INODE_CHAINED_FLAG: u32 = 0x8000_0000;
+pub const INODE_DATA_IN_HEADER: u32 = 0x4000_0000;
+pub const INODE_CHAINED_FLAG: u32 = 0x8000_0000;
 
 impl MFSINode {
     pub fn parse(
@@ -234,7 +234,7 @@ impl MFSINode {
                     ) {
                         Ok(blocks) => blocks,
                         // Not great, but... fine.
-                        Err(err) => vec![],
+                        Err(_err) => String::from("Dummy Data").as_bytes().to_vec(),
                     }
                 })
                 .flatten()

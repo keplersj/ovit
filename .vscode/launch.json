@@ -62,9 +62,11 @@
           "kind": "bin"
         }
       },
+      // "env": { "RUST_LOG": "trace" },
       // "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "2568604"], // /Recording
-      "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "2568611"], // Resource
+      // "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "2568611"], // Resource
       // "args": ["fsid", "/run/media/kepler/External/tivo_hdd.iso", "1"], // /
+      "args": ["zones", "/run/media/kepler/External/tivo_hdd.iso"],
       "cwd": "${workspaceFolder}"
     },
     {
@@ -78,9 +80,10 @@
           "kind": "bin"
         }
       },
+      "env": { "RUST_LOG": "trace" },
       "args": [
         "/run/media/kepler/External/tivo_hdd.iso",
-        "/home/kepler/Desktop/fuse_mount_point"
+        "/home/kepler/TiVoMnt"
       ],
       "cwd": "${workspaceFolder}"
     },

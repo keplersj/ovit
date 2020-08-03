@@ -1,0 +1,56 @@
+---------------------------------------------------------------------
+MFS Volume Header (32-bit)
+---------------------------------------------------------------------
+	state=0 magic=abbafeed
+	devlist=/dev/hda10 /dev/hda11 /dev/hda12 /dev/hda13
+	zonemap_ptr=1121 total_secs=77263872 next_fsid=12697810
+
+---------------------------------------------------------------------
+MFS volume set for /dev/hda
+---------------------------------------------------------------------
+The MFS volume set contains 4 partitions
+   Partition       Sectors         Size
+  /dev/hda10       1048576          512 MiB
+  /dev/hda11      32157696        15702 MiB
+  /dev/hda12       1048576          512 MiB
+  /dev/hda13      43009024        21000 MiB
+Total MFS sectors: 77263872
+Total MFS volume size: 37726 MiB
+Total Inodes: 524288
+
+---------------------------------------------------------------------
+Zone Maps 
+---------------------------------------------------------------------
+Zone 0: type=0 logstamp=101141407 checksum=881335562 first=1122 last=525409
+	sector=1121 sbackup=1048574 length=1
+	size=524288 min=524288 free=524288 zero=0 num=1
+	next.sector=525410 next.sbackup=1048565 next.length=9
+	next.size=32157696 next.min=2048
+Zone 1: type=2 logstamp=104363088 checksum=2999402420 first=1048576 last=33206271
+	sector=525410 sbackup=1048565 length=9
+	size=32157696 min=2048 free=1122304 zero=0 num=15
+	next.sector=525419 next.sbackup=1048531 next.length=34
+	next.size=523072 next.min=8
+Zone 2: type=1 logstamp=104363743 checksum=3907386156 first=525453 last=1048524
+	sector=525419 sbackup=1048531 length=34
+	size=523072 min=8 free=304760 zero=0 num=17
+	next.sector=33206272 next.sbackup=34254847 next.length=1
+	next.size=524288 next.min=524288
+Zone 3: type=0 logstamp=101141407 checksum=1057072217 first=33206273 last=33730560
+	sector=33206272 sbackup=34254847 length=1
+	size=524288 min=524288 free=524288 zero=0 num=1
+	next.sector=33730561 next.sbackup=34254829 next.length=18
+	next.size=43008000 next.min=2048
+Zone 4: type=2 logstamp=104363088 checksum=1565206364 first=34254848 last=77262847
+	sector=33730561 sbackup=34254829 length=18
+	size=43008000 min=2048 free=2455552 zero=0 num=16
+	next.sector=33730579 next.sbackup=34254795 next.length=34
+	next.size=524176 next.min=8
+Zone 5: type=1 logstamp=104361333 checksum=1012311182 first=33730613 last=34254788
+	sector=33730579 sbackup=34254795 length=34
+	size=524176 min=8 free=492544 zero=0 num=17
+	next.sector=0 next.sbackup=3735928559 next.length=0
+	next.size=0 next.min=0
+
+Estimated hours in a standalone TiVo: 39
+This MFS volume may be expanded 4 more times

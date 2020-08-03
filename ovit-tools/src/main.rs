@@ -81,7 +81,7 @@ fn main() {
             );
             println!(
                 "INode Count: {}",
-                tivo_drive.zonemap.inode_iter().unwrap().len()
+                tivo_drive.raw_zonemap.inode_iter().unwrap().len()
             );
         }
         ("partitions", Some(sub_match)) => {
@@ -172,6 +172,9 @@ fn main() {
                     zone.bitmap_num
                 ]);
             }
+
+            // Print the table to stdout
+            table.printstd();
         }
         ("header", Some(sub_match)) => {
             // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
@@ -238,7 +241,12 @@ fn main() {
                 "Number of Blocks",
                 if show_data { "Data" } else { "" },
             ]);
-            for inode in tivo_drive.zonemap.inode_iter().unwrap().take(inode_count) {
+            for inode in tivo_drive
+                .raw_zonemap
+                .inode_iter()
+                .unwrap()
+                .take(inode_count)
+            {
                 table.add_row(row![
                     inode.fsid,
                     inode.refcount,
@@ -317,10 +325,16 @@ fn main() {
                 (2 * inode) + 1122
             }
 
+            let sector = sector_for_inode(inode);
+
             let found_inode = MFSINode::from_file_at_sector(
                 &mut tivo_drive.source_file,
-                tivo_drive.zonemap.partition_starting_sector,
-                sector_for_inode(inode),
+                tivo_drive
+                    .volumes
+                    .find_sector_volume(sector)
+                    .disk_sector
+                    .into(),
+                sector,
                 tivo_drive.is_byte_swapped,
             )
             .unwrap();
