@@ -5,7 +5,7 @@ authors = ["Kepler Sticka-Jones <kepler@stickajones.org>"]
 edition = "2018"
 
 [dependencies]
-clap = "2.33.0"
+clap = "2.33.2"
 prettytable-rs = "0.8.0"
 ovit = { path = "../ovit" }
 tivo-media-file-system = { path = "../tivo-media-file-system" }
